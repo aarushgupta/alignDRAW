@@ -11,19 +11,19 @@ DRAW: A Recurrent Neural Network For Image Generation.
 
 
 class DRAWModel(nn.Module):
-    def __init__(self, params):
+    def __init__(self, args, device):
         super().__init__()
 
-        self.T = params["T"]
-        self.A = params["A"]
-        self.B = params["B"]
-        self.z_size = params["z_size"]
-        self.read_N = params["read_N"]
-        self.write_N = params["write_N"]
-        self.enc_size = params["enc_size"]
-        self.dec_size = params["dec_size"]
-        self.device = params["device"]
-        self.channel = params["channel"]
+        self.T = args.T
+        self.A = args.input_image_size
+        self.B = args.input_image_size
+        self.z_size = args.z_size
+        self.read_N = args.read_N
+        self.write_N = args.write_N
+        self.enc_size = args.enc_size
+        self.dec_size = args.dec_size
+        self.device = device
+        self.channel = args.n_channels
 
         # Stores the generated image for each time step.
         self.cs = [0] * self.T

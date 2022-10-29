@@ -1,16 +1,34 @@
-# Generating-Devanagari-Using-DRAW
-PyTorch implementation of [DRAW: A Recurrent Neural Network For Image Generation](https://arxiv.org/abs/1502.04623) on the task of generating [Devanagari](https://en.wikipedia.org/wiki/Devanagari) Characters.
+# alignDRAW
+PyTorch implementation of [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793).
 <p align="center">
-<img src="images/devanagari_generate.gif" title="Generated Data Animation" alt="Generated Data Animation">
+<img src="./mnist_baseline_results/draw_epoch_50.gif" title="Generated Data Animation" alt="Generated Data Animation">
 </p>
 
 ## Training
-Download the data and place it in the **data/** directory. Run **`train.py`** to start training. To change the hyperparameters of the network, update the values in the `param` dictionary in `train.py`.
+<!-- Download the data and place it in the **data/** directory. Run **`train.py`** to start training. To change the hyperparameters of the network, update the values in the `param` dictionary in `train.py`. -->
+
+To train the model with MNIST data, run
+
+```
+python train.py --dataset_name mnist --input_image_size 28 --n_channels 1 --run_idx 0
+```
+
+To train the model with MS-COCO data, run
+
+```
+python train.py --dataset_name coco --input_image_size 32 --n_channels 3 --run_idx 0
+```
+
 
 **Loss Curve**
+
+Results on MNIST dataset
 <p align="center">
-<img src="images/Devanagari_Loss_Curve.png" title="Training Loss Curves" alt="Training Loss Curves">
+<img src="./mnist_baseline_results/Loss_Curve.png" title="Training Loss Curves" alt="Training Loss Curves">
 </p>
+
+# Sections below are WIP
+
 
 ## Generating New Images
 To generate new images run **`generate.py`**.
@@ -45,9 +63,10 @@ The checkpoint file for the model trained for 50 epochs is present in **checkpoi
 <img src = 'images/Generated_Image144_1.png'>
 
 ## References
-1. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra.** *DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
-2. **ericjang/draw** [[repo](https://github.com/ericjang/draw)]
-3. **What is DRAW (Deep Recurrent Attentive Writer)?** [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
+1. [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793)
+2. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra.** *DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
+3. **ericjang/draw** [[repo](https://github.com/ericjang/draw)]
+4. **What is DRAW (Deep Recurrent Attentive Writer)?** [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
 
 ## Data
 The Devanagari Character dataset is available on kaggle. ([Source](https://www.kaggle.com/rishianand/devanagari-character-set))
