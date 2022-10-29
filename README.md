@@ -19,6 +19,11 @@ To train the model with MS-COCO data, run
 python train.py --dataset_name coco --input_image_size 32 --n_channels 3 --run_idx 0
 ```
 
+To train the model with MNIST-Captions data, run
+
+```
+python train.py --dataset_name mnist_captions --input_image_size 28 --n_channels 1 --run_idx 0
+```
 
 **Loss Curve**
 

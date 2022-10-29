@@ -42,7 +42,9 @@ def main():
     }
 
     # Make logging directory
-    os.makedirs(f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/", exist_ok=False)
+    os.makedirs(
+        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint", exist_ok=True
+    )
 
     # Use GPU is available else use CPU.
     device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
@@ -52,6 +54,12 @@ def main():
     train_loader, val_loader = get_data(args)
 
     sample_imgs = next(iter(train_loader))[0]
+
+    # sample_imgs = (
+    #     next(iter(train_loader))["image"]
+    #     if args.dataset_name == "mnist_captions"
+    #     else next(iter(train_loader))[0]
+    # )
     args.n_channels = (
         sample_imgs.shape[1] if args.n_channels is None else args.n_channels
     )

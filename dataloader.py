@@ -1,8 +1,11 @@
+import os
+import urllib.request
+import random
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
-# Directory containing the data.
+from datasets import MNIST_Captions
 
 """
 MS-COCO dataset is to be downlaoded/setup in the following directory structure
@@ -76,6 +79,48 @@ def get_data(args):
                 train=False,
                 download=True,
                 transform=transforms.Compose([transforms.ToTensor()]),
+            ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+
+    elif args.dataset_name == "mnist_captions":
+
+        if not os.path.exists(f"./data/mnist_authors/mnist.h5"):
+            print(f"Original data not found, downloading...\n")
+            os.makedirs("./data/mnist_authors/", exist_ok=True)
+            urllib.request.urlretrieve(
+                "http://www.cs.toronto.edu/~emansim/datasets/mnist.h5",
+                "./data/mnist_authors/mnist.h5",
+            )
+            print("Data downloaded to ./data/mnist_authors/mnist.h5")
+
+        generate = not os.path.exists("./data/mnist_captions/val_images.npy")
+        banned = [random.randint(0, 10) for i in range(12)]
+
+        datafile = (
+            f"./data/mnist_authors/mnist.h5" if generate else "./data/mnist_captions/"
+        )
+
+        train_dataloader = torch.utils.data.DataLoader(
+            MNIST_Captions(
+                datafile=datafile,
+                generate=generate,
+                banned=banned,
+                split="train",
+                transforms=transforms.Compose([transforms.ToTensor()],),
+            ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+
+        val_dataloader = torch.utils.data.DataLoader(
+            MNIST_Captions(
+                datafile=datafile,
+                generate=generate,
+                banned=banned,
+                split="val",
+                transforms=transforms.Compose([transforms.ToTensor()],),
             ),
             batch_size=args.batch_size,
             shuffle=True,
