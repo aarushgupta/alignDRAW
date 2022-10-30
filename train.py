@@ -25,25 +25,6 @@ def main():
 
     args = get_train_parser()
 
-    # # Dictionary storing network parameters.
-    # params = {
-    #     "T": args.T,  # Number of glimpses.
-    #     "batch_size": args.batch_size,  # Batch size.
-    #     "A": args.input_image_size,
-    #     "B": args.input_image_size,
-    #     "z_size": args.z_size,  # Dimension of latent space.
-    #     "read_N": args.read_N,  # N x N dimension of reading glimpse.
-    #     "write_N": args.write_N,  # N x N dimension of writing glimpse.
-    #     "dec_size": args.dec_size,  # Hidden dimension for decoder.
-    #     "enc_size": args.enc_size,  # Hidden dimension for encoder.
-    #     "epoch_num": args.n_epochs,  # Number of epochs to train for.
-    #     "learning_rate": args.lr,  # Learning rate.
-    #     "beta1": args.beta1,
-    #     "clip": args.clip_grad,
-    #     "save_epoch": args.save_after,  # After how many epochs to save checkpoints and generate test output.
-    #     "channel": args.n_channels,
-    # }
-
     # Make logging directory
     os.makedirs(
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint", exist_ok=True
@@ -87,7 +68,11 @@ def main():
     for epoch in range(args.n_epochs):
         epoch_start_time = time.time()
 
-        for i, (imgs, captions) in enumerate(train_loader, 0):
+        for i, (imgs, captions, seq_len) in enumerate(train_loader, 0):
+            if len(imgs.shape) > 4:
+                imgs = imgs.squeeze()
+                captions = captions.squeeze()
+
             # Get batch size.
             bs = imgs.shape[0]
 
@@ -97,7 +82,7 @@ def main():
 
             # Calculate the loss.
             optimizer.zero_grad()
-            loss = model.loss(imgs, captions)
+            loss = model.loss(imgs, captions[:, :seq_len])
             loss_val = loss.cpu().data.numpy()
             avg_loss += loss_val
 
@@ -109,7 +94,7 @@ def main():
             optimizer.step()
 
             # Check progress of training.
-            if i != 0 and i % 50 == 0:
+            if i != 0 and i % args.print_after == 0:
                 print(
                     f"[{epoch+1}/{args.n_epochs}][{i}/{len(train_loader)}]\tLoss: {(avg_loss / 100):.4f}"
                 )
@@ -134,8 +119,9 @@ def main():
             )
 
             with torch.no_grad():
-                captions = next(iter(val_loader))[1]
-                generate_image(args, epoch + 1, model, captions)
+                captions, seq_len = next(iter(val_loader))[1:]
+                captions = captions.squeeze() if len(captions.shape) > 3 else captions
+                generate_image(args, epoch + 1, model, captions[:, : seq_len.item()])
 
     training_time = time.time() - start_time
     print("-" * 50)
@@ -154,8 +140,9 @@ def main():
 
     # Generate test output.
     with torch.no_grad():
-        captions = next(iter(val_loader))[1]
-        generate_image(args, args.n_epochs, model, captions)
+        captions, seq_len = next(iter(val_loader))[1:]
+        captions = captions.squeeze() if len(captions.shape) > 3 else captions
+        generate_image(args, args.n_epochs, model, captions[:, : seq_len.item()])
 
     plot_training_losses(args, losses, args.dataset_name)
 

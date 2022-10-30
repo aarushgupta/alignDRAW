@@ -1,11 +1,12 @@
 import os
-import urllib.request
 import random
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
-from datasets import MNIST_Captions
+from datasets import MNIST_Captions, COCO_Captions
+from utils import download_mnist_captions_dataset, download_coco_processed_dataset
+
 
 """
 MS-COCO dataset is to be downlaoded/setup in the following directory structure
@@ -27,7 +28,12 @@ def get_data(args):
     """
 
     if args.dataset_name == "coco":
-        root = "/data/datasets/coco/"
+        root = "./data/coco_captions"
+        # root = "/data/datasets/coco/"
+
+        if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
+            print(f"Original data not found, downloading...\n")
+            download_coco_processed_dataset(f"./data/coco_captions")
 
         # Transforms for MS-COCO dataset
         img_transform = transforms.Compose(
@@ -40,24 +46,28 @@ def get_data(args):
 
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
-            dset.CocoCaptions(
-                f"{root}/train2014",
-                annFile=f"{root}/annotations/captions_train2014.json",
+            COCO_Captions(
+                root,
+                split="train",
+                seq_len=args.lang_inp_size,
                 # transform=transforms.Compose([transforms.ToTensor()]),
                 transform=img_transform,
+                batch_size=args.batch_size,
             ),
-            batch_size=args.batch_size,
+            batch_size=1,
             shuffle=False,
         )
 
         val_dataloader = torch.utils.data.DataLoader(
-            dset.CocoCaptions(
-                f"{root}/val2014",
-                annFile=f"{root}/annotations/captions_val2014.json",
+            COCO_Captions(
+                root,
+                split="dev",
+                seq_len=args.lang_inp_size,
                 # transform=transforms.Compose([transforms.ToTensor()]),
                 transform=img_transform,
+                batch_size=args.batch_size,
             ),
-            batch_size=args.batch_size,
+            batch_size=1,
             shuffle=False,
         )
     elif args.dataset_name == "mnist":
@@ -88,12 +98,7 @@ def get_data(args):
 
         if not os.path.exists(f"./data/mnist_authors/mnist.h5"):
             print(f"Original data not found, downloading...\n")
-            os.makedirs("./data/mnist_authors/", exist_ok=True)
-            urllib.request.urlretrieve(
-                "http://www.cs.toronto.edu/~emansim/datasets/mnist.h5",
-                "./data/mnist_authors/mnist.h5",
-            )
-            print("Data downloaded to ./data/mnist_authors/mnist.h5")
+            download_mnist_captions_dataset("./data/mnist_captions/")
 
         generate = not os.path.exists("./data/mnist_captions/val_images.npy")
         banned = [random.randint(0, 10) for i in range(12)]

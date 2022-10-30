@@ -1,7 +1,8 @@
 # alignDRAW
 PyTorch implementation of [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793).
 <p align="center">
-<img src="./mnist_baseline_results/draw_epoch_50.gif" title="Generated Data Animation" alt="Generated Data Animation">
+<img src="./images/mnist_draw_baseline_results_50_epochs.gif" title="Generated Data using DRAW model" alt="Generated Data Animation">
+<img src="./images/mnist_captions_aligndraw_baseline_results_350_epochs.gif" title="Generated Data using alignDRAW model" alt="Generated Data Animation">
 </p>
 
 ## Training
@@ -16,7 +17,7 @@ python train.py --dataset_name mnist --input_image_size 28 --n_channels 1 --run_
 To train the model with MS-COCO data, run
 
 ```
-python train.py --dataset_name coco --input_image_size 32 --n_channels 3 --run_idx 0
+bash run_coco_train.sh
 ```
 
 To train the model with MNIST-Captions data, run
@@ -29,7 +30,7 @@ python train.py --dataset_name mnist_captions --input_image_size 28 --n_channels
 
 Results on MNIST dataset
 <p align="center">
-<img src="./mnist_baseline_results/Loss_Curve.png" title="Training Loss Curves" alt="Training Loss Curves">
+<img src="./images/mnist_baseline_draw_50_epochs_loss.png" title="Training Loss Curves" alt="Training Loss Curves">
 </p>
 
 # Sections below are WIP

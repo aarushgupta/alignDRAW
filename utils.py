@@ -1,5 +1,8 @@
+import os
 import argparse
 import numpy as np
+from tqdm import tqdm
+import urllib.request
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
@@ -92,9 +95,9 @@ def get_train_parser():
     # Arguments for alignDRAW
     parser.add_argument(
         "--lang_inp_size",
-        default=23,
+        default=25323,
         type=int,
-        help="23 for mnist_captions, ___ for MS-COCO",
+        help="23 for mnist_captions, 25323 for MS-COCO",
     )
     parser.add_argument(
         "--lang_h_size",
@@ -105,7 +108,9 @@ def get_train_parser():
     parser.add_argument(
         "--align_size", default=512, type=int, help="Align module hidden layer size"
     )
-
+    parser.add_argument(
+        "--print_after", default=50, type=int, help="Number of iterations to log after"
+    )
     return parser.parse_args()
 
 
@@ -115,18 +120,34 @@ def plot_sample_images(args, train_loader, device, dataset_name):
     plt.figure(figsize=(16, 16))
     plt.axis("off")
     plt.title("Training Images")
-    plt.imshow(
-        np.transpose(
-            vutils.make_grid(
-                sample_batch[0].to(device)[:64],
-                nrow=8,
-                padding=1,
-                normalize=True,
-                pad_value=1,
-            ).cpu(),
-            (1, 2, 0),
+    if dataset_name == "coco":
+        sample_images = sample_batch[0].squeeze()
+        plt.imshow(
+            np.transpose(
+                vutils.make_grid(
+                    sample_images.to(device)[:64],
+                    nrow=8,
+                    padding=1,
+                    normalize=True,
+                    pad_value=1,
+                ).cpu(),
+                (1, 2, 0),
+            )
         )
-    )
+    else:
+        plt.imshow(
+            np.transpose(
+                vutils.make_grid(
+                    sample_batch[0].to(device)[:64],
+                    nrow=8,
+                    padding=1,
+                    normalize=True,
+                    pad_value=1,
+                ).cpu(),
+                (1, 2, 0),
+            )
+        )
+
     plt.savefig(
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/training_data_{dataset_name}"
     )
@@ -144,3 +165,45 @@ def plot_training_losses(args, losses, dataset_name):
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/loss_curve_{dataset_name}"
     )
 
+
+def download_coco_processed_dataset(root_dir="./data/coco_captions/"):
+
+    os.makedirs(root_dir, exist_ok=True)
+
+    file_list = [
+        "train-images-32x32.npy",
+        "train-captions.npy",
+        "train-captions-len.npy",
+        "train-cap2im.pkl",
+        "dev-images-32x32.npy",
+        "dev-captions.npy",
+        "dev-captions-len.npy",
+        "dev-cap2im.pkl",
+        "test-images-32x32.npy",
+        "test-captions.npy",
+        "test-captions-len.npy",
+        "test-cap2im.pkl",
+        "dictionary.pkl",
+    ]
+
+    for file_name in tqdm(file_list):
+
+        urllib.request.urlretrieve(
+            f"http://www.cs.toronto.edu/~emansim/datasets/text2image/{file_name}",
+            f"./data/coco_captions/{file_name}",
+        )
+
+    print("Data downloaded to ./data/coco_captions/")
+
+    return
+
+
+def download_mnist_captions_dataset(root_dir="./data/mnist_captions/"):
+
+    os.makedirs("./data/mnist_authors/", exist_ok=True)
+    urllib.request.urlretrieve(
+        "http://www.cs.toronto.edu/~emansim/datasets/mnist.h5",
+        "./data/mnist_authors/mnist.h5",
+    )
+    print("Data downloaded to ./data/mnist_authors/mnist.h5")
+    return

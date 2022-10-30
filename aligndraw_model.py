@@ -24,6 +24,7 @@ class AlignDRAWModel(nn.Module):
         self.dec_size = args.dec_size
         self.device = device
         self.channel = args.n_channels
+        self.dataset_name = args.dataset_name
 
         # Lang LSTM params
         self.lang_inp_size = args.lang_inp_size
@@ -108,25 +109,33 @@ class AlignDRAWModel(nn.Module):
             self.batch_size, self.dec_size, requires_grad=True, device=self.device
         )
 
-        # TODO: lang_lstm forward pass
-        # TODO: Check if it's okay to pass zero hidden states to the lang_lstm
+        # lang_lstm forward pass
         h_lang, _ = self.lang_lstm(y)  # B x L x 2 * h_out
 
         for t in range(self.T):
-            c_prev = (
-                torch.zeros(
-                    self.batch_size,
-                    self.B * self.A * self.channel,
-                    requires_grad=True,
-                    device=self.device,
-                )
-                if t == 0
-                else self.cs[t - 1]
-            )
+            if t == 0:
+                if self.dataset_name == "mnist_captions":
+                    c_prev = -10 * torch.ones(
+                        self.batch_size,
+                        self.B * self.A * self.channel,
+                        requires_grad=True,
+                        device=self.device,
+                    )
+                else:
+                    c_prev = torch.zeros(
+                        self.batch_size,
+                        self.B * self.A * self.channel,
+                        requires_grad=True,
+                        device=self.device,
+                    )
+            else:
+                self.cs[t - 1]
+
             # Equation 3.
             x_hat = x - torch.sigmoid(c_prev)
             # Equation 4.
             # Get the N x N glimpse.
+            # TODO: Might have to process this channel-wise
             r_t = self.read(x, x_hat, h_dec_prev)
             # Equation 5.
             h_enc, enc_state = self.encoder(
@@ -147,6 +156,7 @@ class AlignDRAWModel(nn.Module):
             )
 
             # Equation 8.
+            # TODO: Might have to process this channel-wise
             self.cs[t] = c_prev + self.write(h_dec)
 
             h_enc_prev = h_enc
@@ -219,7 +229,6 @@ class AlignDRAWModel(nn.Module):
     def sampleQ(self, h_enc):
         e = torch.randn(self.batch_size, self.z_size, device=self.device)
 
-        # TODO: Check if tanh activation needs to be added here as done in self.sampleZ
         # Equation 1.
         mu = self.fc_mu(h_enc)
         # Equation 2.
