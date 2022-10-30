@@ -1,14 +1,17 @@
 import os
-import torch
-import torch.optim as optim
-import matplotlib.pyplot as plt
-import numpy as np
-import matplotlib.animation as animation
 import time
-import torchvision.utils as vutils
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
+import torch.optim as optim
+import torchvision.utils as vutils
 from torchvision import datasets, transforms
+import torch.nn.functional as F
+
 from draw_model import DRAWModel
+from aligndraw_model import AlignDRAWModel
 from dataloader import get_data
 from utils import (
     generate_image,
@@ -22,24 +25,24 @@ def main():
 
     args = get_train_parser()
 
-    # Dictionary storing network parameters.
-    params = {
-        "T": args.T,  # Number of glimpses.
-        "batch_size": args.batch_size,  # Batch size.
-        "A": args.input_image_size,  # COCO Image width
-        "B": args.input_image_size,  # MNIST Image height
-        "z_size": args.z_size,  # Dimension of latent space.
-        "read_N": args.read_N,  # N x N dimension of reading glimpse.
-        "write_N": args.write_N,  # N x N dimension of writing glimpse.
-        "dec_size": args.dec_size,  # Hidden dimension for decoder.
-        "enc_size": args.enc_size,  # Hidden dimension for encoder.
-        "epoch_num": args.n_epochs,  # Number of epochs to train for.
-        "learning_rate": args.lr,  # Learning rate.
-        "beta1": args.beta1,
-        "clip": args.clip_grad,
-        "save_epoch": args.save_after,  # After how many epochs to save checkpoints and generate test output.
-        "channel": args.n_channels,
-    }
+    # # Dictionary storing network parameters.
+    # params = {
+    #     "T": args.T,  # Number of glimpses.
+    #     "batch_size": args.batch_size,  # Batch size.
+    #     "A": args.input_image_size,
+    #     "B": args.input_image_size,
+    #     "z_size": args.z_size,  # Dimension of latent space.
+    #     "read_N": args.read_N,  # N x N dimension of reading glimpse.
+    #     "write_N": args.write_N,  # N x N dimension of writing glimpse.
+    #     "dec_size": args.dec_size,  # Hidden dimension for decoder.
+    #     "enc_size": args.enc_size,  # Hidden dimension for encoder.
+    #     "epoch_num": args.n_epochs,  # Number of epochs to train for.
+    #     "learning_rate": args.lr,  # Learning rate.
+    #     "beta1": args.beta1,
+    #     "clip": args.clip_grad,
+    #     "save_epoch": args.save_after,  # After how many epochs to save checkpoints and generate test output.
+    #     "channel": args.n_channels,
+    # }
 
     # Make logging directory
     os.makedirs(
@@ -55,11 +58,6 @@ def main():
 
     sample_imgs = next(iter(train_loader))[0]
 
-    # sample_imgs = (
-    #     next(iter(train_loader))["image"]
-    #     if args.dataset_name == "mnist_captions"
-    #     else next(iter(train_loader))[0]
-    # )
     args.n_channels = (
         sample_imgs.shape[1] if args.n_channels is None else args.n_channels
     )
@@ -67,7 +65,8 @@ def main():
     plot_sample_images(args, train_loader, device, args.dataset_name)
 
     # Initialize the model and optimizer.
-    model = DRAWModel(args, device).to(device)
+    # model = DRAWModel(args, device).to(device)
+    model = AlignDRAWModel(args, device).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
     # List to hold the losses for each iteration.
@@ -88,24 +87,29 @@ def main():
     for epoch in range(args.n_epochs):
         epoch_start_time = time.time()
 
-        for i, (data, _) in enumerate(train_loader, 0):
+        for i, (imgs, captions) in enumerate(train_loader, 0):
             # Get batch size.
-            bs = data.size(0)
-            # Flatten the image.
-            data = data.view(bs, -1).to(device)
-            optimizer.zero_grad()
+            bs = imgs.shape[0]
+
+            # Move training data to GPU
+            imgs = imgs.view(bs, -1).to(device)
+            captions = captions.to(device)
+
             # Calculate the loss.
-            loss = model.loss(data)
+            optimizer.zero_grad()
+            loss = model.loss(imgs, captions)
             loss_val = loss.cpu().data.numpy()
             avg_loss += loss_val
+
             # Calculate the gradients.
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
+
             # Update parameters.
             optimizer.step()
 
             # Check progress of training.
-            if i != 0 and i % 100 == 0:
+            if i != 0 and i % 50 == 0:
                 print(
                     f"[{epoch+1}/{args.n_epochs}][{i}/{len(train_loader)}]\tLoss: {(avg_loss / 100):.4f}"
                 )
@@ -123,13 +127,15 @@ def main():
                 {
                     "model": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
-                    "params": params,
+                    # "params": params,
+                    "args": args.__dict__,
                 },
                 f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
             )
 
             with torch.no_grad():
-                generate_image(args, epoch + 1, model)
+                captions = next(iter(val_loader))[1]
+                generate_image(args, epoch + 1, model, captions)
 
     training_time = time.time() - start_time
     print("-" * 50)
@@ -140,14 +146,16 @@ def main():
         {
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
-            "params": params,
+            # "params": params,
+            "args": args.__dict__,
         },
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_final_{epoch}",
     )
 
     # Generate test output.
     with torch.no_grad():
-        generate_image(args, args.n_epochs, model)
+        captions = next(iter(val_loader))[1]
+        generate_image(args, args.n_epochs, model, captions)
 
     plot_training_losses(args, losses, args.dataset_name)
 

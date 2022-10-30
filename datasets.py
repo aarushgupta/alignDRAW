@@ -3,8 +3,10 @@ import h5py
 import numpy as np
 import random
 
+import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+import torch.nn.functional as F
 
 from create_mnist_captions import create_mnist_captions_dataset
 
@@ -17,6 +19,9 @@ class MNIST_Captions(Dataset):
         banned,
         split="train",
         transforms=transforms.ToTensor(),
+        target_transforms=transforms.Compose(
+            [transforms.ToTensor(), lambda x: F.one_hot(x, 23),]
+        ),
         image_side=60,
     ):
         if generate:
@@ -50,7 +55,9 @@ class MNIST_Captions(Dataset):
         self.captions = captions
         self.input_counts = input_counts
 
-        self.transforms = transforms
+        # self.transforms = transforms
+        # self.target_transforms = target_transforms
+        self.seq_len = 23
 
     def __len__(self):
         return len(self.input_images)
@@ -61,4 +68,10 @@ class MNIST_Captions(Dataset):
 
         # TODO: Define transforms
 
+        sample_image = torch.from_numpy(sample_image)
+        sample_caption = F.one_hot(
+            torch.from_numpy(sample_caption).to(torch.int64), self.seq_len
+        ).to(sample_image.dtype)
+
+        # return [self.transforms(sample_image), self.target_transforms(sample_caption)]
         return [sample_image, sample_caption]

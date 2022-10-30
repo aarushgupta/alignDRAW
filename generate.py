@@ -11,7 +11,9 @@ from draw_model import DRAWModel
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-load_path", required=True, help="Checkpoint to load path from")
-parser.add_argument("-num_output", default=36, help="Number of generated outputs")
+# parser.add_argument("-num_output", default=36, help="Number of generated outputs")
+# num_output=28 for mnist_captions
+parser.add_argument("-num_output", default=28, help="Number of generated outputs")
 parser.add_argument("-t", default=None, help="Number of glimpses.")
 args = parser.parse_args()
 
