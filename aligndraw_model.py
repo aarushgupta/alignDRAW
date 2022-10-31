@@ -131,31 +131,35 @@ class AlignDRAWModel(nn.Module):
             else:
                 self.cs[t - 1]
 
-            # Equation 3.
+            # Equation 10.
             x_hat = x - torch.sigmoid(c_prev)
-            # Equation 4.
+            # Equation 11.
             # Get the N x N glimpse.
             # TODO: Might have to process this channel-wise
             r_t = self.read(x, x_hat, h_dec_prev)
-            # Equation 5.
+            # Equation 12.
             h_enc, enc_state = self.encoder(
                 torch.cat((r_t, h_dec_prev), dim=1), (h_enc_prev, enc_state)
             )
 
-            # Equation 6.
+            # Equation 13.
             q, self.mus[t], self.logsigmas[t], self.sigmas[t] = self.sampleQ(h_enc)
+
+            # Equation 1.
             _, self.mus_z[t], self.logsigmas_z[t], self.sigmas_z[t] = self.sampleZ(
                 h_dec_prev
             )
 
+            # Equation 2.
             self.sent_rep[t] = self.align(h_dec_prev, h_lang)
 
             # Decoder pass
+            # Equation 3.
             h_dec, dec_state = self.decoder(
                 torch.cat((q, self.sent_rep[t]), dim=-1), (h_dec_prev, dec_state)
             )
 
-            # Equation 8.
+            # Equation 4.
             # TODO: Might have to process this channel-wise
             self.cs[t] = c_prev + self.write(h_dec)
 
@@ -179,7 +183,7 @@ class AlignDRAWModel(nn.Module):
             elif self.channel == 1:
                 img = img.view(-1, self.B, self.A)
 
-            # Equation 27.
+            # Equation 27 from DRAW paper.
             glimpse = torch.matmul(Fy, torch.matmul(img, Fxt))
             glimpse = glimpse.view(-1, self.read_N * self.read_N * self.channel)
 
@@ -194,7 +198,7 @@ class AlignDRAWModel(nn.Module):
 
     def write(self, h_dec):
         # Using attention
-        # Equation 28.
+        # Equation 28 from DRAW paper.
         w = self.fc_write(h_dec)
         if self.channel == 3:
             w = w.view(self.batch_size, 3, self.write_N, self.write_N)
@@ -204,7 +208,7 @@ class AlignDRAWModel(nn.Module):
         (Fx, Fy), gamma = self.attn_window(h_dec, self.write_N)
         Fyt = Fy.transpose(self.channel, 2)
 
-        # Equation 29.
+        # Equation 29 from DRAW paper.
         wr = torch.matmul(Fyt, torch.matmul(w, Fx))
         wr = wr.view(self.batch_size, self.B * self.A * self.channel)
 
