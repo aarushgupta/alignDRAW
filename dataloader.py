@@ -24,7 +24,7 @@ def get_data(args):
     """
 
     if args.dataset_name == "coco":
-        root = "/data/datasets/coco/"
+        root = "/data/datasets/coco"
 
         # Transforms for MS-COCO dataset
         img_transform = transforms.Compose(
@@ -79,6 +79,72 @@ def get_data(args):
             ),
             batch_size=args.batch_size,
             shuffle=True,
+        )
+
+    elif args.dataset_name == "svhn":
+        root = "data/"
+
+        # Transforms for SVHN dataset
+        img_transform = transforms.Compose(
+            # [transforms.Resize(params["A"]), transforms.ToTensor()]
+            [
+                transforms.Resize((args.input_image_size, args.input_image_size)),
+                transforms.ToTensor(),
+            ]
+        )
+
+        train_dataloader = torch.utils.data.DataLoader(
+            dset.SVHN(
+                root=root,
+                split="train",
+                download=True,
+                transform=img_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
+        )
+        val_dataloader = torch.utils.data.DataLoader(
+            dset.SVHN(
+                root=root,
+                split="test",
+                download=True,
+                transform=img_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
+        )
+
+    elif args.dataset_name == "cifar10":
+        root = "data/"
+
+        # Transforms for CIFAR10 dataset
+        img_transform = transforms.Compose(
+            # [transforms.Resize(params["A"]), transforms.ToTensor()]
+            [
+                transforms.Resize((args.input_image_size, args.input_image_size)),
+                transforms.ToTensor(),
+            ]
+        )
+
+        train_dataloader = torch.utils.data.DataLoader(
+            dset.CIFAR10(
+                root=root,
+                train=True,
+                download=True,
+                transform=img_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
+        )
+        val_dataloader = torch.utils.data.DataLoader(
+            dset.CIFAR10(
+                root=root,
+                train=False,
+                download=True,
+                transform=img_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
         )
 
     else:
