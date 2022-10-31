@@ -42,7 +42,10 @@ def main():
     }
 
     # Make logging directory
-    os.makedirs(f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/", exist_ok=False)
+    logging_dir = f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/"
+    if not os.path.exists(logging_dir):
+        os.makedirs(logging_dir)
+    # os.makedirs(f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/", exist_ok=True)
 
     # Use GPU is available else use CPU.
     device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
@@ -111,13 +114,16 @@ def main():
         print(f"Time Taken for Epoch {epoch + 1}: {epoch_time:.2f}s")
         # Save checkpoint and generate test output.
         if (epoch + 1) % args.save_after == 0:
+            save_dir = f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint"
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
             torch.save(
                 {
                     "model": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
                     "params": params,
                 },
-                f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
+                f"{save_dir}/model_epoch_{epoch+1}.pt",
             )
 
             with torch.no_grad():
