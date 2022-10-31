@@ -1,14 +1,9 @@
 import os
 import time
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from tqdm import tqdm
 
 import torch.optim as optim
-import torchvision.utils as vutils
-from torchvision import datasets, transforms
-import torch.nn.functional as F
 
 from draw_model import DRAWModel
 from aligndraw_model import AlignDRAWModel
@@ -18,12 +13,17 @@ from utils import (
     get_train_parser,
     plot_sample_images,
     plot_training_losses,
+    get_validation_loss,
 )
+
+from torch.utils.tensorboard import SummaryWriter
 
 
 def main():
 
     args = get_train_parser()
+
+    writer = SummaryWriter(f"runs/{args.dataset_name}/{args.run_idx}")
 
     # Make logging directory
     os.makedirs(
@@ -50,11 +50,14 @@ def main():
     model = AlignDRAWModel(args, device).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
+    # Scheduler for MS-COCO
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1683, gamma=0.1)
+
     # List to hold the losses for each iteration.
     # Used for plotting loss curve.
     losses = []
     iters = 0
-    avg_loss = 0
+    epoch_loss = 0
 
     print("-" * 25)
     print("Starting Training Loop...\n")
@@ -64,56 +67,70 @@ def main():
     print("-" * 25)
 
     start_time = time.time()
+    global_step = 0
 
     for epoch in range(args.n_epochs):
         epoch_start_time = time.time()
 
-        for i, (imgs, captions, seq_len) in enumerate(train_loader, 0):
-            if len(imgs.shape) > 4:
-                imgs = imgs.squeeze()
-                captions = captions.squeeze()
+        with tqdm(train_loader, unit="batch") as tepoch:
+            # for i, (imgs, captions, seq_len) in enumerate(train_loader, 0):
+            for imgs, captions, seq_len in tepoch:
 
-            # Get batch size.
-            bs = imgs.shape[0]
+                tepoch.set_description(f"Epoch {epoch}")
 
-            # Move training data to GPU
-            imgs = imgs.view(bs, -1).to(device)
-            captions = captions.to(device)
+                if len(imgs.shape) > 4:
+                    imgs = imgs.squeeze()
+                    captions = captions.squeeze()
 
-            # Calculate the loss.
-            optimizer.zero_grad()
-            loss = model.loss(imgs, captions[:, :seq_len])
-            loss_val = loss.cpu().data.numpy()
-            avg_loss += loss_val
+                # Get batch size.
+                bs = imgs.shape[0]
 
-            # Calculate the gradients.
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
+                # Move training data to GPU
+                imgs = imgs.view(bs, -1).to(device)
+                captions = captions.to(device)
 
-            # Update parameters.
-            optimizer.step()
+                # Calculate the loss.
+                optimizer.zero_grad()
+                loss, reconst_loss, kl_loss = model.loss(imgs, captions[:, :seq_len])
+                loss_val = loss.item()
+                epoch_loss += loss_val
 
-            # Check progress of training.
-            if i != 0 and i % args.print_after == 0:
-                print(
-                    f"[{epoch+1}/{args.n_epochs}][{i}/{len(train_loader)}]\tLoss: {(avg_loss / 100):.4f}"
+                writer.add_scalar("Loss/train_total", loss_val, global_step)
+                writer.add_scalar(
+                    "Loss/train_reconst", reconst_loss.item(), global_step
                 )
-                avg_loss = 0
+                writer.add_scalar("Loss/train_kl", kl_loss.item(), global_step)
 
-            losses.append(loss_val)
-            iters += 1
+                # Calculate the gradients.
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
 
-        avg_loss = 0
+                # Update parameters.
+                optimizer.step()
+                global_step += 1
+
+                tepoch.set_postfix(loss=loss_val)
+
+                losses.append(loss_val)
+                iters += 1
+
+        scheduler.step()
+
         epoch_time = time.time() - epoch_start_time
         print(f"Time Taken for Epoch {epoch + 1}: {epoch_time:.2f}s")
-        # Save checkpoint and generate test output.
+        print(f"Epoch {epoch + 1} loss: {epoch_loss / iters}")
+        epoch_loss = 0
+        iters = 0
+
+        # Save checkpoint, generate test output and calculate validation loss.
         if (epoch + 1) % args.save_after == 0:
             torch.save(
                 {
                     "model": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
-                    # "params": params,
+                    "scheduler": scheduler.state_dict(),
                     "args": args.__dict__,
+                    "global_step": global_step,
                 },
                 f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
             )
@@ -121,7 +138,18 @@ def main():
             with torch.no_grad():
                 captions, seq_len = next(iter(val_loader))[1:]
                 captions = captions.squeeze() if len(captions.shape) > 3 else captions
-                generate_image(args, epoch + 1, model, captions[:, : seq_len.item()])
+                val_img = generate_image(
+                    args, epoch + 1, model, captions[:, : seq_len.item()]
+                )
+                writer.add_image("Image/validation", val_img, global_step)
+
+            with torch.no_grad():
+                val_loss, reconst_loss, kl_loss = get_validation_loss(
+                    model, val_loader, device
+                )
+                writer.add_scalar("Loss/val_total", val_loss, global_step)
+                writer.add_scalar("Loss/val_reconst", reconst_loss, global_step)
+                writer.add_scalar("Loss/val_kl", kl_loss, global_step)
 
     training_time = time.time() - start_time
     print("-" * 50)
@@ -132,8 +160,9 @@ def main():
         {
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
-            # "params": params,
+            "scheduler": scheduler.state_dict(),
             "args": args.__dict__,
+            "global_step": global_step,
         },
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_final_{epoch}",
     )
@@ -142,7 +171,7 @@ def main():
     with torch.no_grad():
         captions, seq_len = next(iter(val_loader))[1:]
         captions = captions.squeeze() if len(captions.shape) > 3 else captions
-        generate_image(args, args.n_epochs, model, captions[:, : seq_len.item()])
+        _ = generate_image(args, args.n_epochs, model, captions[:, : seq_len.item()])
 
     plot_training_losses(args, losses, args.dataset_name)
 

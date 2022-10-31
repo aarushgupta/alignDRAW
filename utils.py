@@ -24,6 +24,7 @@ def generate_image(args, epoch, model, captions):
         writer="imagemagick",
     )
     plt.close("all")
+    return x[-1]
 
 
 def get_train_parser():
@@ -207,3 +208,28 @@ def download_mnist_captions_dataset(root_dir="./data/mnist_captions/"):
     )
     print("Data downloaded to ./data/mnist_authors/mnist.h5")
     return
+
+
+def get_validation_loss(model, val_loader, device):
+    loss_vals = {"total": [], "reconst": [], "kl": []}
+    n_samples = 0
+
+    for _, (imgs, captions, seq_len) in enumerate(val_loader, 0):
+        if len(imgs.shape) > 4:
+            imgs = imgs.squeeze()
+            captions = captions.squeeze()
+
+        bs = imgs.shape[0]
+        imgs = imgs.view(bs, -1).to(device)
+        captions = captions.to(device)
+
+        loss_val, lx, lz = model.loss(imgs, captions[:, :seq_len])
+        loss_vals["total"].append(loss_val.item() * bs)
+        loss_vals["reconst"].append(lx.item() * bs)
+        loss_vals["kl"].append(lz.item() * bs)
+
+        n_samples += bs
+
+    loss_vals = [sum(v) / n_samples for k, v in loss_vals.items()]
+
+    return loss_vals

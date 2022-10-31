@@ -334,12 +334,10 @@ class AlignDRAWModel(nn.Module):
             )
             Lz += kl_loss
 
-            # Add loss term for
-
         Lz = torch.mean(Lz)
         net_loss = Lx + Lz
 
-        return net_loss
+        return net_loss, Lx, Lz
 
     def generate(self, num_output, y):
         self.batch_size = num_output
