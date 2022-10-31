@@ -59,7 +59,8 @@ class MNIST_Captions(Dataset):
 
         # self.transforms = transforms
         # self.target_transforms = target_transforms
-        self.seq_len = 23
+        self.n_words = 23
+        self.seq_len = 12
 
     def __len__(self):
         return len(self.input_images)
@@ -72,10 +73,9 @@ class MNIST_Captions(Dataset):
 
         sample_image = torch.from_numpy(sample_image)
         sample_caption = F.one_hot(
-            torch.from_numpy(sample_caption).to(torch.int64), self.seq_len
+            torch.from_numpy(sample_caption).to(torch.int64), self.n_words
         ).to(sample_image.dtype)
 
-        # return [self.transforms(sample_image), self.target_transforms(sample_caption)]
         return [sample_image, sample_caption, self.seq_len]
 
 
@@ -85,7 +85,7 @@ class COCO_Captions(Dataset):
         rootdir="./data/coco_captions/",
         batch_size=1,
         split="train",
-        seq_len=None,
+        n_words_total=None,
         transform=transforms.ToTensor(),
         target_transform=transforms.Compose(
             [transforms.ToTensor(), lambda x: F.one_hot(x, 23),]
@@ -100,11 +100,10 @@ class COCO_Captions(Dataset):
 
         self.cap2ims = pickle.load(open(f"{rootdir}/{split}-cap2im.pkl", "rb"))
         print(f"{split} data loaded.")
-        # breakpoint()
 
         # self.transforms = transforms
         # self.target_transforms = target_transforms
-        self.seq_len = seq_len  # TODO: check if this is correct
+        self.n_words_total = n_words_total
         self.batch_size = batch_size
         self.image_side = image_side
 
@@ -165,7 +164,7 @@ class COCO_Captions(Dataset):
         # # TODO: Define transforms
         sample_images = torch.from_numpy(sample_images)
         sample_captions = F.one_hot(
-            torch.from_numpy(sample_captions).to(torch.int64), self.seq_len
+            torch.from_numpy(sample_captions).to(torch.int64), self.n_words_total
         ).to(sample_images.dtype)
 
         # return [self.transforms(sample_image), self.target_transforms(sample_caption)]

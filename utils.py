@@ -30,6 +30,7 @@ def generate_image(args, epoch, model, captions):
 def get_train_parser():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--T", default=25, type=int, help="Number of glimpses") # 25 for MNIST
+    parser.add_argument("--model_name", default="alignDRAW", type=str)
     parser.add_argument(
         "--T", default=32, type=int, help="Number of glimpses"
     )  # 32 for mnist_captions
@@ -108,9 +109,6 @@ def get_train_parser():
     )
     parser.add_argument(
         "--align_size", default=512, type=int, help="Align module hidden layer size"
-    )
-    parser.add_argument(
-        "--print_after", default=50, type=int, help="Number of iterations to log after"
     )
     return parser.parse_args()
 

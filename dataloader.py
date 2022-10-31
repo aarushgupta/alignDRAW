@@ -49,26 +49,28 @@ def get_data(args):
             COCO_Captions(
                 root,
                 split="train",
-                seq_len=args.lang_inp_size,
+                n_words_total=args.lang_inp_size,
                 # transform=transforms.Compose([transforms.ToTensor()]),
                 transform=img_transform,
                 batch_size=args.batch_size,
             ),
             batch_size=1,
             shuffle=False,
+            num_workers=0,
         )
 
         val_dataloader = torch.utils.data.DataLoader(
             COCO_Captions(
                 root,
                 split="dev",
-                seq_len=args.lang_inp_size,
+                n_words_total=args.lang_inp_size,
                 # transform=transforms.Compose([transforms.ToTensor()]),
                 transform=img_transform,
                 batch_size=args.batch_size,
             ),
             batch_size=1,
             shuffle=False,
+            num_workers=0,
         )
     elif args.dataset_name == "mnist":
 

@@ -47,7 +47,11 @@ def main():
 
     # Initialize the model and optimizer.
     # model = DRAWModel(args, device).to(device)
-    model = AlignDRAWModel(args, device).to(device)
+    model = (
+        AlignDRAWModel(args, device).to(device)
+        if args.model_name == "alignDRAW"
+        else DRAWModel(args, device).to(device)
+    )
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
     # Scheduler for MS-COCO
@@ -82,6 +86,10 @@ def main():
                     imgs = imgs.squeeze()
                     captions = captions.squeeze()
 
+                # Hack: MNIST_Captions somehow returns this as a tensor, instead of a single number like MS-COCO: this line converts it into a single number
+                if isinstance(seq_len, torch.Tensor):
+                    seq_len = seq_len[0]
+
                 # Get batch size.
                 bs = imgs.shape[0]
 
@@ -91,6 +99,7 @@ def main():
 
                 # Calculate the loss.
                 optimizer.zero_grad()
+
                 loss, reconst_loss, kl_loss = model.loss(imgs, captions[:, :seq_len])
                 loss_val = loss.item()
                 epoch_loss += loss_val
