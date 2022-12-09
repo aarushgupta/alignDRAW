@@ -140,7 +140,7 @@ def main():
 
                 # Move training data to GPU
                 imgs = imgs.to(device)
-                captions = captions.to(device)
+                # captions = captions.to(device)
 
                 t = torch.randint(0, args.T, (bs,), device=device).long()
 
@@ -199,7 +199,7 @@ def main():
             with torch.no_grad():
                 # captions, seq_len = next(iter(val_loader))[1:]
                 captions = next(iter(val_loader))[1]
-                captions = captions.squeeze() if len(captions.shape) > 3 else captions
+                # captions = captions.squeeze() if len(captions.shape) > 3 else captions
                 val_img = generate_image(
                     # args, epoch + 1, model, captions[:, : seq_len.item()]
                     args,
@@ -238,7 +238,7 @@ def main():
         # captions, seq_len = next(iter(val_loader))[1:]
         captions = next(iter(val_loader))[1]
 
-        captions = captions.squeeze() if len(captions.shape) > 3 else captions
+        # captions = captions.squeeze() if len(captions.shape) > 3 else captions
         # _ = generate_image(args, args.n_epochs, model, captions[:, : seq_len.item()])
         _ = generate_image(args, args.n_epochs, model, captions)
 

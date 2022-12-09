@@ -224,15 +224,15 @@ def get_validation_loss(model, val_loader, device):
     loss_vals = {"total": [], "reconst": [], "kl": []}
     n_samples = 0
 
-    # for _, (imgs, captions, seq_len) in enumerate(val_loader, 0):
-    for _, (imgs, captions) in enumerate(val_loader, 0):
+    for _, (imgs, captions, seq_len) in enumerate(val_loader, 0):
+        # for _, (imgs, captions) in enumerate(val_loader, 0):
         if len(imgs.shape) > 4:
             imgs = imgs.squeeze()
-            captions = captions.squeeze()
+            # captions = captions.squeeze()
 
         bs = imgs.shape[0]
         imgs = imgs.to(device)
-        captions = captions.to(device)
+        # captions = captions.to(device)
 
         t = torch.randint(0, model.timesteps, (bs,), device=device).long()
 

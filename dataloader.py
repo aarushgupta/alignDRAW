@@ -28,8 +28,8 @@ def get_data(args):
     """
 
     if args.dataset_name == "coco":
-        root = "./data/coco_captions"
-        # root = "/data/datasets/coco/"
+        # root = "./data/coco_captions"
+        root = "/data/datasets/COCO/"
 
         if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
             print(f"Original data not found, downloading...\n")
@@ -37,38 +37,33 @@ def get_data(args):
 
         # Transforms for MS-COCO dataset
         img_transform = transforms.Compose(
-            # [transforms.Resize(params["A"]), transforms.ToTensor()]
             [
+                transforms.RandomHorizontalFlip(),
                 transforms.Resize((args.input_image_size, args.input_image_size)),
                 transforms.ToTensor(),
+                transforms.Lambda(lambda t: (t * 2) - 1),
             ]
         )
 
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
-            COCO_Captions(
-                root,
-                split="train",
-                n_words_total=args.lang_inp_size,
-                # transform=transforms.Compose([transforms.ToTensor()]),
+            dset.CocoCaptions(
+                f"{root}/train2014",
+                annFile=f"{root}/annotations/captions_train2014.json",
                 transform=img_transform,
-                batch_size=args.batch_size,
             ),
-            batch_size=1,
+            batch_size=args.batch_size,
             shuffle=False,
             num_workers=0,
         )
 
         val_dataloader = torch.utils.data.DataLoader(
-            COCO_Captions(
-                root,
-                split="dev",
-                n_words_total=args.lang_inp_size,
-                # transform=transforms.Compose([transforms.ToTensor()]),
+            dset.CocoCaptions(
+                f"{root}/val2014",
+                annFile=f"{root}/annotations/captions_val2014.json",
                 transform=img_transform,
-                batch_size=args.batch_size,
             ),
-            batch_size=1,
+            batch_size=args.batch_size,
             shuffle=False,
             num_workers=0,
         )
