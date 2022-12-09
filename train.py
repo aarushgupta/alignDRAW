@@ -22,7 +22,7 @@ def main():
 
     args = get_train_parser()
 
-    writer = SummaryWriter(f"runs/{args.dataset_name}/{args.run_idx}")
+    writer = SummaryWriter(f"runs/{args.dataset_name}_{args.model_name}/{args.run_idx}")
 
     # Make logging directory
     os.makedirs(
