@@ -6,6 +6,7 @@ import urllib.request
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+import torch
 import torchvision.utils as vutils
 
 
@@ -14,9 +15,11 @@ def generate_image(args, epoch, model, captions):
     x = model.generate(64, captions[:64])
     fig = plt.figure(figsize=(16, 16))
     plt.axis("off")
-    ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)] for i in x]
+    ims = [
+        [plt.imshow(np.transpose(i, (1, 2, 0)), cmap="gray", animated=True)] for i in x
+    ]
     anim = animation.ArtistAnimation(
-        fig, ims, interval=500, repeat_delay=1000, blit=True
+        fig, ims, interval=50, repeat_delay=1000, blit=True
     )
     anim.save(
         f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/draw_epoch_{epoch}.gif",
@@ -80,7 +83,8 @@ def get_train_parser():
     parser.add_argument("--n_epochs", default=100, type=int)
     parser.add_argument("--lr", default=1e-3, type=float)
     parser.add_argument("--beta1", default=0.5, type=float)
-    parser.add_argument("--clip_grad", default=5.0, type=float)
+    parser.add_argument("--no_clip_grad", action="store_true")
+    parser.add_argument("--clip_grad_val", default=5.0, type=float)
     parser.add_argument("--dataset_name", default="coco", type=str)
     parser.add_argument("--n_channels", default=3, type=int)
     parser.add_argument(
@@ -212,19 +216,23 @@ def get_validation_loss(model, val_loader, device):
     loss_vals = {"total": [], "reconst": [], "kl": []}
     n_samples = 0
 
-    for _, (imgs, captions, seq_len) in enumerate(val_loader, 0):
+    # for _, (imgs, captions, seq_len) in enumerate(val_loader, 0):
+    for _, (imgs, captions) in enumerate(val_loader, 0):
         if len(imgs.shape) > 4:
             imgs = imgs.squeeze()
             captions = captions.squeeze()
 
         bs = imgs.shape[0]
-        imgs = imgs.view(bs, -1).to(device)
+        imgs = imgs.to(device)
         captions = captions.to(device)
 
-        loss_val, lx, lz = model.loss(imgs, captions[:, :seq_len])
+        t = torch.randint(0, model.timesteps, (bs,), device=device).long()
+
+        # loss_val, lx, lz = model.loss(imgs, captions[:, :seq_len])
+        loss_val, lx, lz = model.loss(imgs, t, None, captions)
         loss_vals["total"].append(loss_val.item() * bs)
-        loss_vals["reconst"].append(lx.item() * bs)
-        loss_vals["kl"].append(lz.item() * bs)
+        # loss_vals["reconst"].append(lx.item() * bs)
+        # loss_vals["kl"].append(lz.item() * bs)
 
         n_samples += bs
 

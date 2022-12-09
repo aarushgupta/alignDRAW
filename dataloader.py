@@ -133,6 +133,31 @@ def get_data(args):
             shuffle=True,
         )
 
+    elif args.dataset_name == "fmnist":
+        root = "./data/"
+        image_transform = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Lambda(lambda t: (t * 2) - 1),
+            ]
+        )
+
+        train_dataloader = torch.utils.data.DataLoader(
+            dset.FashionMNIST(
+                root=root, train=True, download=True, transform=image_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+        val_dataloader = torch.utils.data.DataLoader(
+            dset.FashionMNIST(
+                root=root, train=False, download=True, transform=image_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+
     else:
         raise NotImplementedError
 
