@@ -5,8 +5,6 @@ from tqdm import tqdm
 
 import torch.optim as optim
 
-from draw_model import DRAWModel
-from aligndraw_model import AlignDRAWModel
 from diffusion_model import DDPM
 from dataloader import get_data
 from utils import (
@@ -40,26 +38,65 @@ def main():
 
     sample_imgs = next(iter(train_loader))[0]
 
+    # DEBUG
+    if args.debug:
+        from PIL import Image
+        import imageio
+        import requests
+
+        url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+        image = Image.open(requests.get(url, stream=True).raw)
+
+        imageio.imwrite("./test.png", image)
+
+        from torchvision.transforms import (
+            Compose,
+            ToTensor,
+            Lambda,
+            ToPILImage,
+            CenterCrop,
+            Resize,
+        )
+
+        image_size = 128
+        transform = Compose(
+            [
+                Resize(image_size),
+                CenterCrop(image_size),
+                ToTensor(),  # turn into Numpy array of shape HWC, divide by 255
+                Lambda(lambda t: (t * 2) - 1),
+            ]
+        )
+
+        x_start = transform(image).unsqueeze(0)
+
+        import numpy as np
+
+        reverse_transform = Compose(
+            [
+                Lambda(lambda t: (t + 1) / 2),
+                Lambda(lambda t: t.permute(1, 2, 0)),  # CHW to HWC
+                Lambda(lambda t: t * 255.0),
+                Lambda(lambda t: t.numpy().astype(np.uint8)),
+                ToPILImage(),
+            ]
+        )
+        image_reversed = reverse_transform(x_start.squeeze())
+        imageio.imwrite("./test_1.png", image_reversed)
+        exit()
+
+    # Test noise addition
+    model = DDPM(args, dim_mults=(1, 2, 4))
+
     args.n_channels = (
         sample_imgs.shape[1] if args.n_channels is None else args.n_channels
     )
-
-    # Initialize the model and optimizer.
-    # model = DRAWModel(args, device).to(device)
-    # model = (
-    #     AlignDRAWModel(args, device).to(device)
-    #     if args.model_name == "alignDRAW"
-    #     else DRAWModel(args, device).to(device)
-    # )
 
     # Plot DDPM sample images
     model = DDPM(args, dim_mults=(1, 2, 4)).to(device)
     plot_sample_images(args, train_loader, device, args.dataset_name)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
-
-    # Scheduler for MS-COCO
-    # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1683, gamma=0.1)
 
     if args.model_name == "ddpm":
         assert args.no_clip_grad is True, "[WARNING] Gradient clipping enabled"
@@ -158,6 +195,7 @@ def main():
                 f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
             )
 
+        if (epoch + 1) % args.log_after == 0:
             with torch.no_grad():
                 # captions, seq_len = next(iter(val_loader))[1:]
                 captions = next(iter(val_loader))[1]

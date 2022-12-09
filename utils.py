@@ -87,12 +87,20 @@ def get_train_parser():
     parser.add_argument("--clip_grad_val", default=5.0, type=float)
     parser.add_argument("--dataset_name", default="coco", type=str)
     parser.add_argument("--n_channels", default=3, type=int)
+    parser.add_argument("--debug", action="store_true")
     parser.add_argument(
         "--save_after",
         default=10,
         type=int,
-        help="Interval (in epochs) to save results after",
+        help="Interval (in epochs) to save model after",
     )
+    parser.add_argument(
+        "--log_after",
+        default=10,
+        type=int,
+        help="Interval (in epochs) to log results after",
+    )
+
     parser.add_argument(
         "--save_dir", default="./results", type=str, help="Directory to save results to"
     )
