@@ -98,7 +98,7 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
-    if args.model_name == "ddpm":
+    if args.model_name == "ddpm" or "tti":
         assert args.no_clip_grad is True, "[WARNING] Gradient clipping enabled"
 
     # List to hold the losses for each iteration.
@@ -140,7 +140,11 @@ def main():
 
                 # Move training data to GPU
                 imgs = imgs.to(device)
-                # captions = captions.to(device)
+                captions = (
+                    {k: v.to(device) for k, v in captions.items()}
+                    if isinstance(captions, dict)
+                    else captions.to(device)
+                )
 
                 t = torch.randint(0, args.T, (bs,), device=device).long()
 

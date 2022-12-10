@@ -8,6 +8,8 @@ import torchvision.utils as vutils
 
 from diffusion_utils import *
 
+from transformers import RobertaModel
+
 
 class DDPM(nn.Module):
     def __init__(
@@ -100,7 +102,13 @@ class DDPM(nn.Module):
             block_klass(dim, dim), nn.Conv2d(dim, out_dim, 1)
         )
 
-    def forward(self, x, time):
+        # Pre-trained language backbone
+        self.lang_backbone = RobertaModel.from_pretrained("roberta-base")
+
+    def forward(self, x, time, captions):
+
+        encoded_captions = self.lang_backbone(**captions)
+
         x = self.init_conv(x)
 
         t = self.time_mlp(time) if exists(self.time_mlp) else None
@@ -109,21 +117,21 @@ class DDPM(nn.Module):
 
         # Downsample layers
         for block1, block2, attn, downsample in self.downs:
-            x = block1(x, t)
-            x = block2(x, t)
+            x = block1(x, t, encoded_captions)
+            x = block2(x, t, encoded_captions)
             x = attn(x)
             h.append(x)
             x = downsample(x)
 
         # Bottleneck layers
-        x = self.mid_block1(x, t)
+        x = self.mid_block1(x, t, encoded_captions)
         x = self.mid_attn(x)
-        x = self.mid_block2(x, t)
+        x = self.mid_block2(x, t, encoded_captions)
 
         for block1, block2, attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)
-            x = block1(x, t)
-            x = block2(x, t)
+            x = block1(x, t, encoded_captions)
+            x = block2(x, t, encoded_captions)
             x = attn(x)
             x = upsample(x)
 
@@ -166,7 +174,7 @@ class DDPM(nn.Module):
             noise = torch.randn_like(img)
 
         x_noisy = self.sample_q(x_start=img, t=t, noise=noise)
-        predicted_noise = self.forward(x_noisy, t)
+        predicted_noise = self.forward(x_noisy, t, captions)
 
         if self.loss_type == "l1":
             loss = F.l1_loss(noise, predicted_noise)
@@ -176,7 +184,7 @@ class DDPM(nn.Module):
         return loss, None, None
 
     @torch.no_grad()
-    def p_sample(self, x, t, t_index):
+    def p_sample(self, x, t, t_index, captions):
         betas_t = extract(self.betas, t, x.shape)
         sqrt_one_minus_alphas_cumprod_t = extract(
             self.sqrt_one_minus_alphas_cumprod, t, x.shape
@@ -186,7 +194,7 @@ class DDPM(nn.Module):
         # Equation 11 in paper
         # Use the model (noise predictor) to predict the mean (?)
         model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self.forward(x, t) / sqrt_one_minus_alphas_cumprod_t
+            x - betas_t * self.forward(x, t, captions) / sqrt_one_minus_alphas_cumprod_t
         )
 
         if t_index == 0:
@@ -214,7 +222,10 @@ class DDPM(nn.Module):
             total=self.timesteps,
         ):
             image = self.p_sample(
-                image, torch.full((num_samples,), i, device=device, dtype=torch.long), i
+                image,
+                torch.full((num_samples,), i, device=device, dtype=torch.long),
+                i,
+                captions,
             )
             denoised_images.append(image)
         # return denoised_images

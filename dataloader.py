@@ -19,7 +19,6 @@ from utils import (
 )
 
 
-
 """
 MS-COCO dataset is to be downlaoded/setup in the following directory structure
 
@@ -40,12 +39,12 @@ def get_data(args):
     """
 
     if args.dataset_name == "coco":
-        # root = "./data/coco_captions"
-        root = "/home/mateo/Data/datasets/COCO/"
+        root = "/data/datasets/COCO"
+        # root = "/home/mateo/Data/datasets/COCO/"
 
-        if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
-            print(f"Original data not found, downloading...\n")
-            download_coco_processed_dataset(f"./data/coco_captions")
+        # if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
+        #     print(f"Original data not found, downloading...\n")
+        #     download_coco_processed_dataset(f"./data/coco_captions")
 
         # Transforms for MS-COCO dataset
         img_transform = transforms.Compose(
@@ -63,9 +62,15 @@ def get_data(args):
             if isinstance(input, list):
                 chosen_caption_idx = np.random.randint(0, len(input))
                 chose_captions = input[chosen_caption_idx]
-                return tokenizer(chose_captions, padding="max_length", truncation=True, return_tensors="pt")
-            return tokenizer(input, padding="max_length", truncation=True, return_tensors="pt")
-
+                return tokenizer(
+                    chose_captions,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="pt",
+                )
+            return tokenizer(
+                input, padding="max_length", truncation=True, return_tensors="pt"
+            )
 
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
@@ -183,11 +188,13 @@ def get_data(args):
     return [train_dataloader, val_dataloader]
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     args = get_train_parser()
     train_loader, val_loader = get_data(args)
-    import pdb;pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
 
     for i, data in enumerate(train_loader):
         print(i)
-        
+
