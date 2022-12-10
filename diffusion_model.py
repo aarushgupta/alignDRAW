@@ -126,7 +126,7 @@ class DDPM(nn.Module):
 
         # Pre-trained language backbone
         self.lang_backbone = RobertaModel.from_pretrained("roberta-base")
-        self.lang_backbone.requires_grad = False
+        self.lang_backbone.requires_grad = args.ft_lang
 
     def forward(self, x, time, captions):
 

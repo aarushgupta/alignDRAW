@@ -147,6 +147,11 @@ def get_train_parser():
         "--align_size", default=512, type=int, help="Align module hidden layer size"
     )
     parser.add_argument(
+        "--ft_lang",
+        action="store_true",
+        help="If set, the language model also gets fine-tuned",
+    )
+    parser.add_argument(
         "--custom_sentence", default=None, help="Custom input sentence to run TTI on"
     )
     return parser.parse_args()

@@ -94,7 +94,24 @@ def main():
     model = DDPM(args, dim_mults=(1, 2, 4)).to(device)
     plot_sample_images(args, train_loader, device, args.dataset_name)
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
+    if args.ft_lang:
+        lang_backbone_params = [
+            v for k, v in model.named_parameters() if k.startswith("lang_backbone")
+        ]
+        other_params = [
+            v for k, v in model.named_parameters() if not k.startswith("lang_backbone")
+        ]
+        optimizer = optim.Adam(
+            [
+                {"params": lang_backbone_params, "lr": args.lr / 1000},
+                {"params": other_params, "lr": args.lr},
+            ],
+            betas=(args.beta1, 0.999),
+        )
+    else:
+        optimizer = optim.Adam(
+            model.parameters(), lr=args.lr, betas=(args.beta1, 0.999)
+        )
 
     if args.model_name == "ddpm" or "tti":
         assert args.no_clip_grad is True, "[WARNING] Gradient clipping enabled"

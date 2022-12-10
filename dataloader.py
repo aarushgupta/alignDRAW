@@ -1,5 +1,6 @@
 import os
 import random
+from functools import partial
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
@@ -32,15 +33,26 @@ root
 """
 
 
-def tokenize_labels(input):
-    tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+def tokenize_labels(input, tokenizer):
     if isinstance(input, list):
         chosen_caption_idx = np.random.randint(0, len(input))
         chose_captions = input[chosen_caption_idx]
         return tokenizer(
-            chose_captions, padding="max_length", truncation=True, return_tensors="pt",
+            # chose_captions, padding="max_length", truncation=True, return_tensors="pt",
+            chose_captions,
+            padding="max_length",
+            truncation=True,
+            max_length=128,
+            return_tensors="pt",
         )
-    return tokenizer(input, padding="max_length", truncation=True, return_tensors="pt")
+    # return tokenizer(input, padding="max_length", truncation=True, return_tensors="pt")
+    return tokenizer(
+        input,
+        padding="max_length",
+        truncation=True,
+        max_length=128,
+        return_tensors="pt",
+    )
 
 
 def get_data(args):
@@ -66,6 +78,8 @@ def get_data(args):
                 transforms.Lambda(lambda t: (t * 2) - 1),
             ]
         )
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+        tokenize_roberta = partial(tokenize_labels, tokenizer=tokenizer)
 
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
@@ -73,7 +87,7 @@ def get_data(args):
                 f"{root}/train2014",
                 annFile=f"{root}/annotations/captions_train2014.json",
                 transform=img_transform,
-                target_transform=tokenize_labels,
+                target_transform=tokenize_roberta,
             ),
             batch_size=args.batch_size,
             shuffle=False,
@@ -85,7 +99,7 @@ def get_data(args):
                 f"{root}/val2014",
                 annFile=f"{root}/annotations/captions_val2014.json",
                 transform=img_transform,
-                target_transform=tokenize_labels,
+                target_transform=tokenize_roberta,
             ),
             batch_size=args.batch_size,
             shuffle=False,
