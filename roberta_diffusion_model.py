@@ -12,6 +12,7 @@ from diffusion_model import DDPM
 
 class DiffusionRoberta(nn.Module):
     def __init__(self, args, device):
+        super().__init__()
         self.roberta_model = RobertaModel.from_pretrained("roberta-base").to(device)
         self.diffusion_model = DDPM(args, dim_mults=(1, 2, 4)).to(device)
 
