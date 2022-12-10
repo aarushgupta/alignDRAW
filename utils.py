@@ -11,7 +11,7 @@ import torchvision.utils as vutils
 
 
 # Function to generate new images and save the time-steps as an animation.
-def generate_image(args, epoch, model, captions):
+def generate_image(args, epoch, model, captions, test=False):
     captions = {k: v[:64].squeeze() for k, v in captions.items()}
     x = model.generate(64, captions)
     fig = plt.figure(figsize=(16, 16))
@@ -28,6 +28,27 @@ def generate_image(args, epoch, model, captions):
         dpi=100,
         writer="imagemagick",
     )
+    plt.close("all")
+    return x[-1]
+
+
+# Function to generate new images and save the time-steps as an animation.
+def generate_image_from_caption(args, epoch, model, captions, test=False):
+    x = model.generate(len(captions["attention_mask"]), captions)
+    fig = plt.figure(figsize=(16, 16))
+    plt.axis("off")
+    ims = [
+        [plt.imshow(np.transpose(i, (1, 2, 0)), cmap="gray", animated=True)]
+        for i in x[::10]
+    ]
+    anim = animation.ArtistAnimation(
+        fig, ims, interval=50, repeat_delay=1000, blit=True
+    )
+    save_dir = f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}_results/draw_epoch_{epoch}_{args.custom_sentence}.gif"
+    anim.save(
+        save_dir, dpi=100, writer="imagemagick",
+    )
+
     plt.close("all")
     return x[-1]
 
@@ -124,6 +145,9 @@ def get_train_parser():
     )
     parser.add_argument(
         "--align_size", default=512, type=int, help="Align module hidden layer size"
+    )
+    parser.add_argument(
+        "--custom_sentence", default=None, help="Custom input sentence to run TTI on"
     )
     return parser.parse_args()
 

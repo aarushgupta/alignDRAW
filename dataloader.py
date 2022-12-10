@@ -32,6 +32,17 @@ root
 """
 
 
+def tokenize_labels(input):
+    tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+    if isinstance(input, list):
+        chosen_caption_idx = np.random.randint(0, len(input))
+        chose_captions = input[chosen_caption_idx]
+        return tokenizer(
+            chose_captions, padding="max_length", truncation=True, return_tensors="pt",
+        )
+    return tokenizer(input, padding="max_length", truncation=True, return_tensors="pt")
+
+
 def get_data(args):
     """
     Loads the dataset and applies proproccesing steps to it.
@@ -55,22 +66,6 @@ def get_data(args):
                 transforms.Lambda(lambda t: (t * 2) - 1),
             ]
         )
-
-        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
-
-        def tokenize_labels(input):
-            if isinstance(input, list):
-                chosen_caption_idx = np.random.randint(0, len(input))
-                chose_captions = input[chosen_caption_idx]
-                return tokenizer(
-                    chose_captions,
-                    padding="max_length",
-                    truncation=True,
-                    return_tensors="pt",
-                )
-            return tokenizer(
-                input, padding="max_length", truncation=True, return_tensors="pt"
-            )
 
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
