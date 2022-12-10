@@ -7,6 +7,18 @@ import torchvision.datasets as dset
 from datasets import MNIST_Captions, COCO_Captions
 from utils import download_mnist_captions_dataset, download_coco_processed_dataset
 
+from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
+import numpy as np
+
+from utils import (
+    generate_image,
+    get_train_parser,
+    plot_sample_images,
+    plot_training_losses,
+    get_validation_loss,
+)
+
+
 
 """
 MS-COCO dataset is to be downlaoded/setup in the following directory structure
@@ -29,7 +41,7 @@ def get_data(args):
 
     if args.dataset_name == "coco":
         # root = "./data/coco_captions"
-        root = "/data/datasets/COCO/"
+        root = "/home/mateo/Data/datasets/COCO/"
 
         if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
             print(f"Original data not found, downloading...\n")
@@ -45,12 +57,23 @@ def get_data(args):
             ]
         )
 
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+
+        def tokenize_labels(input):
+            if isinstance(input, list):
+                chosen_caption_idx = np.random.randint(0, len(input))
+                chose_captions = input[chosen_caption_idx]
+                return tokenizer(chose_captions, padding="max_length", truncation=True, return_tensors="pt")
+            return tokenizer(input, padding="max_length", truncation=True, return_tensors="pt")
+
+
         # COCO dataloaders
         train_dataloader = torch.utils.data.DataLoader(
             dset.CocoCaptions(
                 f"{root}/train2014",
                 annFile=f"{root}/annotations/captions_train2014.json",
                 transform=img_transform,
+                target_transform=tokenize_labels,
             ),
             batch_size=args.batch_size,
             shuffle=False,
@@ -62,6 +85,7 @@ def get_data(args):
                 f"{root}/val2014",
                 annFile=f"{root}/annotations/captions_val2014.json",
                 transform=img_transform,
+                target_transform=tokenize_labels,
             ),
             batch_size=args.batch_size,
             shuffle=False,
@@ -157,3 +181,13 @@ def get_data(args):
         raise NotImplementedError
 
     return [train_dataloader, val_dataloader]
+
+
+if __name__=="__main__":
+    args = get_train_parser()
+    train_loader, val_loader = get_data(args)
+    import pdb;pdb.set_trace()
+
+    for i, data in enumerate(train_loader):
+        print(i)
+        
