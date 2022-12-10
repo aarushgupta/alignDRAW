@@ -22,6 +22,7 @@ class DDPM(nn.Module):
         resnet_block_groups=8,
         use_convnext=True,
         convnext_mult=2,
+        lang_dim=128,
     ) -> None:
         super().__init__()
 
@@ -54,9 +55,15 @@ class DDPM(nn.Module):
                 nn.GELU(),
                 nn.Linear(time_dim, time_dim),
             )
+            self.lang_mlp = nn.Sequential(
+                nn.Linear(768, lang_dim * 2),
+                nn.GELU(),
+                nn.Linear(lang_dim * 2, lang_dim),
+            )
         else:
             time_dim = None
             self.time_mlp = None
+            self.lang_mlp = None
 
         # Main layers
 
@@ -70,8 +77,12 @@ class DDPM(nn.Module):
             self.downs.append(
                 nn.ModuleList(
                     [
-                        block_klass(dim_in, dim_out, time_emb_dim=time_dim),
-                        block_klass(dim_out, dim_out, time_emb_dim=time_dim),
+                        block_klass(
+                            dim_in, dim_out, time_emb_dim=time_dim, lang_dim=lang_dim
+                        ),
+                        block_klass(
+                            dim_out, dim_out, time_emb_dim=time_dim, lang_dim=lang_dim
+                        ),
                         Residual(PreNorm(dim_out, LinearAttention(dim_out))),
                         Downsample(dim_out) if not is_last else nn.Identity(),
                     ]
@@ -79,9 +90,13 @@ class DDPM(nn.Module):
             )
 
         mid_dim = dims[-1]
-        self.mid_block1 = block_klass(mid_dim, mid_dim, time_emb_dim=time_dim)
+        self.mid_block1 = block_klass(
+            mid_dim, mid_dim, time_emb_dim=time_dim, lang_dim=lang_dim
+        )
         self.mid_attn = Residual(PreNorm(mid_dim, Attention(mid_dim)))
-        self.mid_block2 = block_klass(mid_dim, mid_dim, time_emb_dim=time_dim)
+        self.mid_block2 = block_klass(
+            mid_dim, mid_dim, time_emb_dim=time_dim, lang_dim=lang_dim
+        )
 
         for ind, (dim_in, dim_out) in enumerate(reversed(in_out[1:])):
             is_last = ind >= (num_resolutions - 1)
@@ -89,8 +104,15 @@ class DDPM(nn.Module):
             self.ups.append(
                 nn.ModuleList(
                     [
-                        block_klass(dim_out * 2, dim_in, time_emb_dim=time_dim),
-                        block_klass(dim_in, dim_in, time_emb_dim=time_dim),
+                        block_klass(
+                            dim_out * 2,
+                            dim_in,
+                            time_emb_dim=time_dim,
+                            lang_dim=lang_dim,
+                        ),
+                        block_klass(
+                            dim_in, dim_in, time_emb_dim=time_dim, lang_dim=lang_dim
+                        ),
                         Residual(PreNorm(dim_in, LinearAttention(dim_in))),
                         Upsample(dim_in) if not is_last else nn.Identity(),
                     ]
@@ -104,14 +126,19 @@ class DDPM(nn.Module):
 
         # Pre-trained language backbone
         self.lang_backbone = RobertaModel.from_pretrained("roberta-base")
+        self.lang_backbone.requires_grad = False
 
     def forward(self, x, time, captions):
 
-        encoded_captions = self.lang_backbone(**captions)
+        with torch.no_grad():
+            encoded_captions = self.lang_backbone(**captions)["pooler_output"]
 
         x = self.init_conv(x)
 
         t = self.time_mlp(time) if exists(self.time_mlp) else None
+        encoded_captions = (
+            self.lang_mlp(encoded_captions) if exists(self.lang_mlp) else None
+        )
 
         h = []
 

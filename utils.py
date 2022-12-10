@@ -12,17 +12,19 @@ import torchvision.utils as vutils
 
 # Function to generate new images and save the time-steps as an animation.
 def generate_image(args, epoch, model, captions):
-    x = model.generate(64, captions[:64])
+    captions = {k: v[:64].squeeze() for k, v in captions.items()}
+    x = model.generate(64, captions)
     fig = plt.figure(figsize=(16, 16))
     plt.axis("off")
     ims = [
-        [plt.imshow(np.transpose(i, (1, 2, 0)), cmap="gray", animated=True)] for i in x
+        [plt.imshow(np.transpose(i, (1, 2, 0)), cmap="gray", animated=True)]
+        for i in x[::10]
     ]
     anim = animation.ArtistAnimation(
         fig, ims, interval=50, repeat_delay=1000, blit=True
     )
     anim.save(
-        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/draw_epoch_{epoch}.gif",
+        f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/draw_epoch_{epoch}.gif",
         dpi=100,
         writer="imagemagick",
     )
@@ -38,6 +40,7 @@ def get_train_parser():
         "--T", default=32, type=int, help="Number of glimpses"
     )  # 32 for mnist_captions
     parser.add_argument("--batch_size", default=128, type=int)
+    parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument(
         # "--input_image_size", default=32, type=int, help="Model input image side" # 32 for MS-COCO, 28 for MNIST
         "--input_image_size",
@@ -160,7 +163,7 @@ def plot_sample_images(args, train_loader, device, dataset_name):
         )
 
     plt.savefig(
-        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/training_data_{dataset_name}"
+        f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/training_data_{dataset_name}"
     )
     return
 
@@ -173,7 +176,7 @@ def plot_training_losses(args, losses, dataset_name):
     plt.xlabel("iterations")
     plt.ylabel("Loss")
     plt.savefig(
-        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/loss_curve_{dataset_name}"
+        f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/loss_curve_{dataset_name}"
     )
 
 
@@ -233,7 +236,7 @@ def get_validation_loss(model, val_loader, device):
         bs = imgs.shape[0]
         imgs = imgs.to(device)
         captions = (
-            {k: v.to(device) for k, v in captions.items()}
+            {k: v.squeeze().to(device) for k, v in captions.items()}
             if isinstance(captions, dict)
             else captions.to(device)
         )

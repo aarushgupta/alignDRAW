@@ -26,11 +26,12 @@ def main():
 
     # Make logging directory
     os.makedirs(
-        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint", exist_ok=True
+        f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/checkpoint",
+        exist_ok=True,
     )
 
     # Use GPU is available else use CPU.
-    device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
     print(device, " will be used.\n")
 
     # Fetch train and validation loaders
@@ -85,9 +86,6 @@ def main():
         imageio.imwrite("./test_1.png", image_reversed)
         exit()
 
-    # Test noise addition
-    model = DDPM(args, dim_mults=(1, 2, 4))
-
     args.n_channels = (
         sample_imgs.shape[1] if args.n_channels is None else args.n_channels
     )
@@ -121,8 +119,6 @@ def main():
         epoch_start_time = time.time()
 
         with tqdm(train_loader, unit="batch") as tepoch:
-            # for i, (imgs, captions, seq_len) in enumerate(train_loader, 0):
-            # for imgs, captions, seq_len in tepoch:
             for imgs, captions in tepoch:
 
                 tepoch.set_description(f"Epoch {epoch}")
@@ -131,27 +127,21 @@ def main():
                     imgs = imgs.squeeze()
                     captions = captions.squeeze()
 
-                # # Hack: MNIST_Captions somehow returns this as a tensor, instead of a single number like MS-COCO: this line converts it into a single number
-                # if isinstance(seq_len, torch.Tensor):
-                #     seq_len = seq_len[0]
-
-                # Get batch size.
                 bs = imgs.shape[0]
 
                 # Move training data to GPU
                 imgs = imgs.to(device)
                 captions = (
-                    {k: v.to(device) for k, v in captions.items()}
+                    {k: v.squeeze().to(device) for k, v in captions.items()}
                     if isinstance(captions, dict)
                     else captions.to(device)
                 )
 
                 t = torch.randint(0, args.T, (bs,), device=device).long()
 
-                # Calculate the loss.
                 optimizer.zero_grad()
 
-                # loss, reconst_loss, kl_loss = model.loss(imgs, captions[:, :seq_len])
+                # Calculate the loss.
                 loss, reconst_loss, kl_loss = model.loss(imgs, t, None, captions)
 
                 loss_val = loss.item()
@@ -196,21 +186,20 @@ def main():
                     "args": args.__dict__,
                     "global_step": global_step,
                 },
-                f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
+                f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/checkpoint/model_epoch_{epoch+1}",
             )
 
         if (epoch + 1) % args.log_after == 0:
             with torch.no_grad():
-                # captions, seq_len = next(iter(val_loader))[1:]
                 captions = next(iter(val_loader))[1]
-                # captions = captions.squeeze() if len(captions.shape) > 3 else captions
-                val_img = generate_image(
-                    # args, epoch + 1, model, captions[:, : seq_len.item()]
-                    args,
-                    epoch + 1,
-                    model,
-                    captions,
+                captions = (
+                    {k: v.squeeze().to(device) for k, v in captions.items()}
+                    if isinstance(captions, dict)
+                    else captions.to(device)
                 )
+
+                # captions = captions.squeeze() if len(captions.shape) > 3 else captions
+                val_img = generate_image(args, epoch + 1, model, captions,)
                 writer.add_image("Image/validation", val_img, global_step)
 
             with torch.no_grad():
@@ -234,16 +223,18 @@ def main():
             "args": args.__dict__,
             "global_step": global_step,
         },
-        f"{args.save_dir}/{args.dataset_name}/{args.run_idx}/checkpoint/model_final_{epoch}",
+        f"{args.save_dir}/{args.dataset_name}_{args.model_name}/{args.run_idx}/checkpoint/model_final_{epoch}",
     )
 
     # Generate test output.
     with torch.no_grad():
-        # captions, seq_len = next(iter(val_loader))[1:]
         captions = next(iter(val_loader))[1]
+        captions = (
+            {k: v.squeeze().to(device) for k, v in captions.items()}
+            if isinstance(captions, dict)
+            else captions.to(device)
+        )
 
-        # captions = captions.squeeze() if len(captions.shape) > 3 else captions
-        # _ = generate_image(args, args.n_epochs, model, captions[:, : seq_len.item()])
         _ = generate_image(args, args.n_epochs, model, captions)
 
     plot_training_losses(args, losses, args.dataset_name)

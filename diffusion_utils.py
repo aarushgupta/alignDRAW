@@ -95,7 +95,9 @@ class ResnetBlock(nn.Module):
 
 
 class ConvNextBlock(nn.Module):
-    def __init__(self, dim, dim_out, *, time_emb_dim=None, mult=2, norm=True) -> None:
+    def __init__(
+        self, dim, dim_out, *, time_emb_dim=None, lang_dim=128, mult=2, norm=True
+    ) -> None:
         super().__init__()
         self.mlp = (
             nn.Sequential(nn.GELU(), nn.Linear(time_emb_dim, dim))
@@ -103,24 +105,45 @@ class ConvNextBlock(nn.Module):
             else None
         )
 
+        self.mlp_lang = (
+            nn.Sequential(nn.GELU(), nn.Linear(lang_dim, dim))
+            if exists(time_emb_dim)
+            else None
+        )
+
         self.ds_conv = nn.Conv2d(dim, dim, 7, padding=3, groups=dim)
 
-        self.net = nn.Sequential(
-            nn.GroupNorm(1, dim) if norm else nn.Identity(),
-            nn.Conv2d(dim, dim_out * mult, 3, padding=1),
-            nn.GELU(),
-            nn.GroupNorm(1, dim_out * mult),
-            nn.Conv2d(dim_out * mult, dim_out, 3, padding=1),
+        self.net = (
+            nn.Sequential(
+                nn.GroupNorm(1, dim * 2) if norm else nn.Identity(),
+                # nn.Conv2d(dim, dim_out * mult, 3, padding=1),
+                nn.Conv2d(dim * 2, dim_out * mult, 3, padding=1),
+                nn.GELU(),
+                nn.GroupNorm(1, dim_out * mult),
+                nn.Conv2d(dim_out * mult, dim_out, 3, padding=1),
+            )
+            if exists(time_emb_dim)
+            else nn.Sequential(
+                nn.GroupNorm(1, dim) if norm else nn.Identity(),
+                nn.Conv2d(dim, dim_out * mult, 3, padding=1),
+                nn.GELU(),
+                nn.GroupNorm(1, dim_out * mult),
+                nn.Conv2d(dim_out * mult, dim_out, 3, padding=1),
+            )
         )
 
         self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
-    def forward(self, x, time_emb=None):
+    def forward(self, x, time_emb=None, lang_emb=None):
         h = self.ds_conv(x)
 
         if exists(self.mlp) and exists(time_emb):
             condition = self.mlp(time_emb)
             h = h + rearrange(condition, "b c -> b c 1 1")
+            lang_condition = rearrange(self.mlp_lang(lang_emb), "b c -> b c 1 1")
+            h = torch.cat(
+                [h, lang_condition.repeat(1, 1, h.shape[2], h.shape[3])], dim=1
+            )
 
         h = self.net(h)
         return h + self.res_conv(x)

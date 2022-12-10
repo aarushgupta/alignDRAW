@@ -82,7 +82,7 @@ def get_data(args):
             ),
             batch_size=args.batch_size,
             shuffle=False,
-            num_workers=0,
+            num_workers=args.num_workers,
         )
 
         val_dataloader = torch.utils.data.DataLoader(
@@ -94,7 +94,7 @@ def get_data(args):
             ),
             batch_size=args.batch_size,
             shuffle=False,
-            num_workers=0,
+            num_workers=args.num_workers,
         )
     elif args.dataset_name == "mnist":
 
