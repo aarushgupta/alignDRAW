@@ -127,10 +127,11 @@ class DDPM(nn.Module):
         # Pre-trained language backbone
         self.lang_backbone = RobertaModel.from_pretrained("roberta-base")
         self.lang_backbone.requires_grad = args.ft_lang
+        self.ft_lang = args.ft_lang
 
     def forward(self, x, time, captions):
 
-        with torch.no_grad():
+        with torch.set_grad_enabled(self.ft_lang):
             encoded_captions = self.lang_backbone(**captions)["pooler_output"]
 
         x = self.init_conv(x)

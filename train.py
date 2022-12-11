@@ -103,7 +103,8 @@ def main():
         ]
         optimizer = optim.Adam(
             [
-                {"params": lang_backbone_params, "lr": args.lr / 1000},
+                {"params": lang_backbone_params, "lr": args.lr / 1000},  # Run 3
+                # {"params": lang_backbone_params, "lr": args.lr},  # Run 4
                 {"params": other_params, "lr": args.lr},
             ],
             betas=(args.beta1, 0.999),
