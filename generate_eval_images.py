@@ -111,3 +111,15 @@ def main():
 
 if __name__=="__main__":
     main()
+
+# EVALUATION INSTRUCTIONS
+# Run this script to generate images (might want to generate stats for a subset of all images, currently I do this manually by making copies of the images folder w images, e.g. images_1024, and manually making a copy of the json captions file to match this number of images, e.g. tti_captions_1024.json)
+# To obtain CLIPScore:
+#     - Install clipscore: https://github.com/jmhessel/clipscore (Note, need to install dependencies first: OpenAI CLIP and PyCOCOEvalCap)
+#     - Run the following commands to obtain CLIPScore of gt and tti: 
+#         - python clipscore.py ~/alignDRAW/eval_data/gt/gt_captions.json ~/alignDRAW/eval_data/gt/images_1024/
+#         - python clipscore.py ~/alignDRAW/eval_data/tti/tti_captions_1024.json ~/alignDRAW/eval_data/tti/images_1024/
+# To obtain FID Score:
+#     - Install pytorch-fid: https://github.com/mseitzer/pytorch-fid
+#     - Run the following command:
+#         - python -m pytorch_fid ~/alignDRAW/eval_data/gt/images_1024/ ~/alignDRAW/eval_data/tti/images_1024/
