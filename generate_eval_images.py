@@ -32,10 +32,10 @@ reverse_transform = transforms.Compose(
 def main():
 
     args = get_train_parser()
-    args.trained_model = "./results/coco/tti/0/checkpoint/model_final_49"
+    args.trained_model = "./results/coco/tti/1/checkpoint/model_final_99"
     args.dont_encode_text = True
     args.dont_transform_image = True
-    args.input_image_size = 32
+    args.input_image_size = 64
     args.dataset_name = "coco"
     args.model_name =  "tti"
     args.n_channels = 3
@@ -69,7 +69,7 @@ def main():
     gt_image_captions = {}
     tti_image_captions = {}
 
-    eval_dir = os.path.join(os.getcwd(), "eval_data")
+    eval_dir = os.path.join(os.getcwd(), "model128", "eval_data")
     gt_dir = os.path.join(eval_dir, "gt")
     gt_images_dir = os.path.join(gt_dir, "images")
     tti_dir = os.path.join(eval_dir, "tti")
