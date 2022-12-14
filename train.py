@@ -91,7 +91,10 @@ def main():
     )
 
     # Plot DDPM sample images
-    model = DDPM(args, dim_mults=(1, 2, 4)).to(device)
+    if int(args.input_image_size) >= 128:
+        model = DDPM(args, dim_mults=(1, 2, 4, 8)).to(device)
+    else:
+        model = DDPM(args, dim_mults=(1, 2, 4)).to(device)
     plot_sample_images(args, train_loader, device, args.dataset_name)
 
     if args.ft_lang:
