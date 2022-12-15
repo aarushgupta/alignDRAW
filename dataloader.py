@@ -78,7 +78,7 @@ def get_data(args):
     """
 
     if args.dataset_name == "coco":
-        root = "/data/datasets/COCO"
+        root = args.dataset_path
         # root = "/home/mateo/Data/datasets/COCO/"
 
         # if not os.path.exists(f"./data/coco_captions/train-images-32x32.npy"):
@@ -148,7 +148,7 @@ def get_data(args):
         )
 
     elif args.dataset_name == "coco_tti":
-        root = "/home/mateo/Data/datasets/COCO/"
+        root = args.dataset_path
 
         img_transform = transforms.Compose(
             [

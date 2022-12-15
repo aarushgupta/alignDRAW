@@ -110,6 +110,7 @@ def get_train_parser():
     parser.add_argument("--no_clip_grad", action="store_true")
     parser.add_argument("--clip_grad_val", default=5.0, type=float)
     parser.add_argument("--dataset_name", default="coco", type=str)
+    parser.add_argument("--dataset_path", default="/data/datasets/COCO", type=str)
     parser.add_argument("--n_channels", default=3, type=int)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument(

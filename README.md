@@ -1,87 +1,114 @@
-# alignDRAW
-PyTorch implementation of [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793).
+# Diffusion+Transformer Based Text-to-Image Generation
+
+This repo serves our code for the 10-701 class project. It contains a TTI model based on a diffusion generator and a RoBERTa language backbone for text conditioning.  
+
+We also implemented the alignDRAW model from [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793) in PyTorch as a part of this project (on branch aligndraw).
+
 <p align="center">
-<img src="./images/mnist_draw_baseline_results_50_epochs.gif" title="Samples of MNIST dataset generated using the DRAW model" alt="Generated Data Animation">
+<img src="./images/tti_32_ft_ep_249.gif" title="Samples of MS-COCO dataset generated using the our TTI model (Image sizez 32)" alt="Generated Data Animation">
 
-<img src="./images/mnist_captions_aligndraw_baseline_results_350_epochs.gif" title="Samples of MNIST-Captions dataset generated using the alignDRAW model" alt="Generated Data Animation">
-
-<img src="./images/coco_aligndraw_results_2800_epochs.gif" title="Samples of MS-COCO dataset generated using the alignDRAW model" alt="Generated Data Animation">
+<!-- <img src="./images/tti_64_ft_ep_246.gif" title="Samples of MS-COCO dataset generated using the our TTI model (Image sizez 64)" alt="Generated Data Animation"> -->
 </p>
 
 ## Training
-<!-- Download the data and place it in the **data/** directory. Run **`train.py`** to start training. To change the hyperparameters of the network, update the values in the `param` dictionary in `train.py`. -->
 
-To train the model with MNIST data, run
-
-```
-python train.py --dataset_name mnist --input_image_size 28 --n_channels 1 --run_idx 0
-```
 
 To train the model with MS-COCO data, run
 
-```
-bash run_coco_train.sh
-```
-
-To train the model with MNIST-Captions data, run
-
-```
-python train.py --dataset_name mnist_captions --input_image_size 28 --n_channels 1 --run_idx 0
+```sh
+bash run_tti_64_coco_ft_roberta.sh $gpu_ids $run_idx $dataset_path
 ```
 
-**Loss Curve**
+where gpu_ids are the GPU numbers you want to train on (for example, 1,2).
 
-Results on MNIST dataset
-<p align="center">
-<img src="./images/mnist_baseline_draw_50_epochs_loss.png" title="Training Loss Curves" alt="Training Loss Curves">
-</p>
+This script trains a model with 64 input image size with 200 diffusion steps and fine-tuns the RoBERTa backbone as well.
 
-Results on MS-COCO dataset
-<p align="center">
-<img src="./images/loss_curve_coco.png" title="Training Loss Curves" alt="Training Loss Curves">
-</p>
-
-
-# Sections below are WIP
-
+Various arguments are provided to train with a different image size, number of diffusion steps, frozen language backbone, etc.
 
 ## Generating New Images
-To generate new images run **`generate.py`**.
+To generate new images run 
+
 ```sh
-python3 evaluate.py -load_path /path/to/pth/checkpoint -num_output n
+bash run_tti_eval_coco.sh $gpu_ids $original_expt_run_idx
 ```
-The checkpoint file for the model trained for 50 epochs is present in **checkpoint/** directory.
 
-## Results
-<table align='center'>
-<tr align='center'>
-<th> Devanagari Training Data </th>
-<th> Generated Devanagari After 50 Epochs</th>
-</tr>
-<tr>
-<td><img src = 'images/Devanagari_Training_Data.png'>
-<td><img src = 'images/Devanagari_Generated_Image.png'>
-</tr>
-</table>
-<table align='center'>
-<tr align='center'>
-<th> Devanagari Numbers Only Training Data </th>
-<th> Generated Devanagari Numbers After 50 Epochs</th>
-</tr>
-<tr>
-<td><img src = 'images/devanagari_num_Training_Data.png'>
-<td><img src = 'images/devanagari_num_epoch_50_generated_image.png'>
-</tr>
-</table>
+`original_expt_run_idx` is the original experiment's run idx. 
 
-### Some more generated images:
-<img src = 'images/Generated_Image144_1.png'>
+## Metrics
+
+We evaluate the trained models on FID and CLIP Scores. 
+
+### Metrics Setup
+- Download clipscore repository (https://github.com/jmhessel/clipscore (Need to install dependencies first: OpenAI CLIP and PyCOCOEvalCap)
+
+```sh
+pip install git+https://github.com/openai/CLIP.git
+pip install git+https://github.com/jmhessel/pycocoevalcap.git
+git clone https://github.com/jmhessel/clipscore.git
+
+```
+
+- Setup python-fid to compute FID scores
+
+```sh
+pip install pytorch-fid
+```
+### Evaluation
+
+1. Run `gen_images_for_metrics.sh` to run model inference and generate random images for metric calculation
+
+```sh
+bash gen_images_for_metrics.sh $gpu_ids $original_expt_run_idx $pretrained_model_path
+```
+
+`original_expt_run_idx` is the original experiment's run idx. Ouput data (needed for the next steps) is stored in a folder `./eval_data_run_${run_idx}`. 
+
+2. Compute CLIP Scores in the following way:
+
+```sh
+cd clipscore
+
+python clipscore.py ../eval_data_run_${run_idx}/gt/gt_captions.json ../eval_data_run_${run_idx}/gt/images/
+
+python clipscore.py ../eval_data_run_${run_idx}/tti/tti_captions.json ../eval_data_run_${run_idx}/tti/images/
+
+cd -
+```
+
+
+3. Compute FID scores in the following way:
+
+```sh
+python -m pytorch_fid ./eval_data_run_${run_idx}/gt/images/ ./eval_data_run_${run_idx}/tti/images/
+```
+
+
+## Results on MS-COCO dataset
+<p align="center">
+<img src="./images/tti_32_ft_ep_249.gif" title="Samples of MS-COCO dataset generated using the our TTI model (Image sizez 32)" alt="Generated Data Animation">
+
+<img src="./images/tti_64_ft_ep_246.gif" title="Samples of MS-COCO dataset generated using the our TTI model (Image sizez 64)" alt="Generated Data Animation">
+
+| Model      | FID ($\downarrow$) | GT CLIP Score ($\uparrow$)| TTI CLIP Score ($\uparrow$)| Checkpoints ([Drive Link](https://drive.google.com/drive/folders/1DZcWFM1MACbo4KOylFdHItSDZW3v0RkY?usp=share_link))| 
+| ----------- | ----------- | ----------- | ----------- | ----------- |
+| 32x32 (RoBERTa frozen)   | 76.623 | 0.6249 |0.5286 | `checkpoint/model_0` |
+| 64x64 (RoBERTa frozen)   | 69.985 | 0.6172 |0.5467 | `checkpoint/model_2` |
+| 32x32 (RoBERTa fine-tuned) | 104.627 | 0.6907 |0.5192 | `checkpoint/model_3` |
+| 64x64 (RoBERTa fine-tuned) | 92.941  | 0.7023 |0.5467 | `checkpoint/model_4` |
+
+
+- Models are identified by their input image size and if their language backbone is fine-tuned or not. 
+
+- GT CLIP Score is the CLIP score obtained from downsampled (to input image size) images and corresponding captions and serves as a benchmark to make sense of the TTI CLIP Scores (the nearer TTI CLIP scores are to the GT CLIP scores, the better)
+
+<!-- ### Some more generated images: -->
+<!-- <center><img src="./images/sample_image_tti_1.png"></center> -->
+<!-- <center>This is an image</center> -->
 
 ## References
-1. [Generating Images from Captions with Attention](http://arxiv.org/abs/1511.02793)
-2. **Karol Gregor, Ivo Danihelka, Alex Graves, Danilo Jimenez Rezende, Daan Wierstra.** *DRAW: A Recurrent Neural Network For Image Generation.* [[arxiv](https://arxiv.org/abs/1502.04623)]
-3. **ericjang/draw** [[repo](https://github.com/ericjang/draw)]
-4. **What is DRAW (Deep Recurrent Attentive Writer)?** [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
-
-## Data
-The Devanagari Character dataset is available on kaggle. ([Source](https://www.kaggle.com/rishianand/devanagari-character-set))
+1. Generating Images from Captions with Attention [[arxiv]](http://arxiv.org/abs/1511.02793)
+2. DRAW: A Recurrent Neural Network For Image Generation. [[arxiv](https://arxiv.org/abs/1502.04623)]
+3. ericjang/draw [[repo](https://github.com/ericjang/draw)]
+4. What is DRAW (Deep Recurrent Attentive Writer)? [[blog](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/)]
+5. HuggingFace Annotated Diffusion Model [[blog](https://huggingface.co/blog/annotated-diffusion)]
+6. HuggingFace transformers library [[page](https://huggingface.co/docs/transformers/index)]
