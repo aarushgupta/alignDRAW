@@ -33,22 +33,6 @@ reverse_transform = transforms.Compose(
 def main():
 
     args = get_train_parser()
-    args.dont_encode_text = True
-    args.dont_transform_image = True
-    # args.trained_model = "./results/coco_tti/0/checkpoint/model_final_49"
-    # args.run_idx = 0
-    # args.trained_model = "./results/coco_tti/3/checkpoint/model_final_249"
-    # args.run_idx = 3
-    # args.trained_model = "./results/coco_tti/2/checkpoint/model_final_99"
-    # args.run_idx = 2
-    args.trained_model = "./results/coco_tti/4/checkpoint/model_final_199"
-    args.run_idx = 4
-    # args.input_image_size = 32
-    args.input_image_size = 64
-    args.dataset_name = "coco"
-    args.model_name = "tti"
-    args.n_channels = 3
-    args.T = 200
 
     # Use GPU is available else use CPU.
     device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
