@@ -58,7 +58,7 @@ def get_train_parser():
     # parser.add_argument("--T", default=25, type=int, help="Number of glimpses") # 25 for MNIST
     parser.add_argument("--model_name", default="alignDRAW", type=str)
     parser.add_argument(
-        "--T", default=32, type=int, help="Number of glimpses"
+        "--T", default=200, type=int, help="Number of glimpses"
     )  # 32 for mnist_captions
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--num_workers", default=8, type=int)
@@ -154,6 +154,22 @@ def get_train_parser():
     parser.add_argument(
         "--custom_sentence", default=None, help="Custom input sentence to run TTI on"
     )
+    parser.add_argument(
+        "--dont_encode_text",
+        action="store_true",
+        help="If set, does not tokenize the caption, and deterministically returns the 0th caption in the datasaet.",
+    )
+    parser.add_argument(
+        "--dont_transform_image",
+        action="store_true",
+        help="If set, does not transform the image, and instead dataloader returns raw image.",
+    )
+
+    parser.add_argument(
+        "--trained_model", default=None, help="Model to be used for evaluation."
+    )
+    # "./results/coco/tti/0/checkpoint/model_final_49"
+
     return parser.parse_args()
 
 

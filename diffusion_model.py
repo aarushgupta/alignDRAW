@@ -11,6 +11,17 @@ from diffusion_utils import *
 from transformers import RobertaModel
 
 
+reverse_transform = transforms.Compose(
+    [
+        transforms.Lambda(lambda t: (t + 1) / 2),
+        transforms.Lambda(lambda t: t.permute(1, 2, 0)),  # CHW to HWC
+        transforms.Lambda(lambda t: t * 255.0),
+        transforms.Lambda(lambda t: t.numpy().astype(np.uint8)),
+        transforms.ToPILImage(),
+    ]
+)
+
+
 class DDPM(nn.Module):
     def __init__(
         self,

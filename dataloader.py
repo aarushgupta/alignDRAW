@@ -55,6 +55,22 @@ def tokenize_labels(input, tokenizer):
     )
 
 
+def deterministic_caption(input):
+    chosen_captions = input[0]
+    return chosen_captions
+
+
+reverse_transform = transforms.Compose(
+    [
+        transforms.Lambda(lambda t: (t + 1) / 2),
+        transforms.Lambda(lambda t: t.permute(1, 2, 0)),  # CHW to HWC
+        transforms.Lambda(lambda t: t * 255.0),
+        transforms.Lambda(lambda t: t.numpy().astype(np.uint8)),
+        transforms.ToPILImage(),
+    ]
+)
+
+
 def get_data(args):
     """
     Loads the dataset and applies proproccesing steps to it.
@@ -70,9 +86,72 @@ def get_data(args):
         #     download_coco_processed_dataset(f"./data/coco_captions")
 
         # Transforms for MS-COCO dataset
+        # img_transform = transforms.Compose(
+        #     [
+        #         transforms.RandomHorizontalFlip(),
+        #         transforms.Resize((args.input_image_size, args.input_image_size)),
+        #         transforms.ToTensor(),
+        #         transforms.Lambda(lambda t: (t * 2) - 1),
+        #     ]
+        # )
+
+        if args.dont_transform_image:
+            img_transform = transforms.Compose(
+                [
+                    transforms.Resize((args.input_image_size, args.input_image_size)),
+                    transforms.ToTensor(),
+                    transforms.Lambda(lambda t: (t * 2) - 1),
+                ]
+            )
+
+        else:
+            img_transform = transforms.Compose(
+                [
+                    transforms.RandomHorizontalFlip(),
+                    transforms.Resize((args.input_image_size, args.input_image_size)),
+                    transforms.ToTensor(),
+                    transforms.Lambda(lambda t: (t * 2) - 1),
+                ]
+            )
+
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+        tokenize_roberta = partial(tokenize_labels, tokenizer=tokenizer)
+
+        if args.dont_encode_text:
+            target_transform = deterministic_caption
+        else:
+            target_transform = tokenize_roberta
+
+        # COCO dataloaders
+        train_dataloader = torch.utils.data.DataLoader(
+            dset.CocoCaptions(
+                f"{root}/train2014",
+                annFile=f"{root}/annotations/captions_train2014.json",
+                transform=img_transform,
+                target_transform=target_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+        )
+
+        val_dataloader = torch.utils.data.DataLoader(
+            dset.CocoCaptions(
+                f"{root}/val2014",
+                annFile=f"{root}/annotations/captions_val2014.json",
+                transform=img_transform,
+                target_transform=target_transform,
+            ),
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+        )
+
+    elif args.dataset_name == "coco_tti":
+        root = "/home/mateo/Data/datasets/COCO/"
+
         img_transform = transforms.Compose(
             [
-                transforms.RandomHorizontalFlip(),
                 transforms.Resize((args.input_image_size, args.input_image_size)),
                 transforms.ToTensor(),
                 transforms.Lambda(lambda t: (t * 2) - 1),
